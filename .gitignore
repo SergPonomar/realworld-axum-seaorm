@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 /dist
+/target
 
 # IDEs and editors
 /.idea
@@ -31,3 +32,6 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+#Environment
+.env
