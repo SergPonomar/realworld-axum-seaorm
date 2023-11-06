@@ -18,15 +18,19 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(User::Email).string().unique_key().not_null())
+                    .col(ColumnDef::new(User::Email).string().not_null().unique_key())
                     .col(
                         ColumnDef::new(User::Username)
                             .string()
-                            .unique_key()
-                            .not_null(),
+                            .not_null()
+                            .unique_key(),
                     )
                     .col(ColumnDef::new(User::Bio).text())
-                    .col(ColumnDef::new(User::Image).string())
+                    .col(
+                        ColumnDef::new(User::Image)
+                            .string()
+                            .default("https://api.realworld.io/images/smiley-cyrus.jpeg"),
+                    )
                     .to_owned(),
             )
             .await

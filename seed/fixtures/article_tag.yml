@@ -1,0 +1,30 @@
+ArticleTag1:
+  tag_id: ${{ REF(Tag1) }}
+  article_id: ${{ REF(Article1) }}
+ArticleTag2:
+  tag_id: ${{ REF(Tag1) }}
+  article_id: ${{ REF(Article3) }}
+ArticleTag3:
+  tag_id: ${{ REF(Tag2) }}
+  article_id: ${{ REF(Article10) }}
+ArticleTag4:
+  tag_id: ${{ REF(Tag2) }}
+  article_id: ${{ REF(Article9) }}
+ArticleTag5:
+  tag_id: ${{ REF(Tag2) }}
+  article_id: ${{ REF(Article6) }}
+ArticleTag6:
+  tag_id: ${{ REF(Tag3) }}
+  article_id: ${{ REF(Article4) }}
+ArticleTag7:
+  tag_id: ${{ REF(Tag4) }}
+  article_id: ${{ REF(Article9) }}
+ArticleTag8:
+  tag_id: ${{ REF(Tag5) }}
+  article_id: ${{ REF(Article3) }}
+ArticleTag9:
+  tag_id: ${{ REF(Tag5) }}
+  article_id: ${{ REF(Article4) }}
+ArticleTag10:
+  tag_id: ${{ REF(Tag4) }}
+  article_id: ${{ REF(Article7) }}

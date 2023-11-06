@@ -13,31 +13,31 @@ impl MigrationTrait for Migration {
                     .table(Article::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Article::Slug)
-                            .string()
+                        ColumnDef::new(Article::Id)
+                            .integer()
                             .not_null()
+                            .auto_increment()
                             .primary_key(),
                     )
                     .col(
-                        ColumnDef::new(Article::Title)
+                        ColumnDef::new(Article::Slug)
                             .string()
                             .unique_key()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(Article::Description).text())
-                    .col(ColumnDef::new(Article::Body).text())
-                    .col(ColumnDef::new(Article::Favorited).boolean())
-                    .col(ColumnDef::new(Article::FavoritesCount).integer())
+                    .col(ColumnDef::new(Article::Title).string().not_null())
+                    .col(ColumnDef::new(Article::Description).string().not_null())
+                    .col(ColumnDef::new(Article::Body).text().not_null())
                     .col(ColumnDef::new(Article::AuthorId).integer().not_null())
                     .col(
                         ColumnDef::new(Article::CreatedAt)
                             .timestamp()
-                            .extra("DEFAULT CURRENT_TIMESTAMP".to_string()),
+                            .default(Expr::current_timestamp()),
                     )
                     .col(
                         ColumnDef::new(Article::UpdatedAt)
                             .timestamp()
-                            .extra("DEFAULT CURRENT_TIMESTAMP".to_string()),
+                            .default(Expr::current_timestamp()),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -47,6 +47,19 @@ impl MigrationTrait for Migration {
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .name("idx-article")
+                    .if_not_exists()
+                    .table(Article::Table)
+                    .col(Article::AuthorId)
+                    .col(Article::Title)
+                    .unique()
                     .to_owned(),
             )
             .await
@@ -62,12 +75,11 @@ impl MigrationTrait for Migration {
 #[derive(DeriveIden)]
 pub enum Article {
     Table,
+    Id,
     Slug,
     Title,
     Description,
     Body,
-    Favorited,
-    FavoritesCount,
     AuthorId,
     CreatedAt,
     UpdatedAt,

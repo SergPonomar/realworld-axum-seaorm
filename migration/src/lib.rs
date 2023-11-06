@@ -5,7 +5,8 @@ mod m20231030_000002_create_article_table;
 mod m20231030_000003_create_comment_table;
 mod m20231030_000004_create_tag_table;
 mod m20231030_000005_create_article_tag_table;
-// mod m20231030_000006_seed_db;
+mod m20231101_000006_create_follower_table;
+mod m20231104_000007_create_favorited_article_table;
 
 pub struct Migrator;
 
@@ -18,7 +19,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20231030_000003_create_comment_table::Migration),
             Box::new(m20231030_000004_create_tag_table::Migration),
             Box::new(m20231030_000005_create_article_tag_table::Migration),
-            // Box::new(m20231030_000006_seed_db::Migration),
+            Box::new(m20231101_000006_create_follower_table::Migration),
+            Box::new(m20231104_000007_create_favorited_article_table::Migration),
         ]
     }
 }

@@ -1,0 +1,28 @@
+Comment1:
+  body: 'Comment about article'
+  author_id: ${{ REF(User2) }}
+  article_id: ${{ REF(Article1) }}
+Comment2:
+  body: 'Comment about article'
+  author_id: ${{ REF(User1) }}
+  article_id: ${{ REF(Article1) }}
+Comment3:
+  body: 'Comment about article'
+  author_id: ${{ REF(User5) }}
+  article_id: ${{ REF(Article3) }}
+Comment4:
+  body: 'Comment about article'
+  author_id: ${{ REF(User3) }}
+  article_id: ${{ REF(Article2) }}
+Comment5:
+  body: 'Comment about article'
+  author_id: ${{ REF(User5) }}
+  article_id: ${{ REF(Article2) }}
+Comment6:
+  body: 'Comment about article'
+  author_id: ${{ REF(User2) }}
+  article_id: ${{ REF(Article10) }}
+Comment7:
+  body: 'Comment about article'
+  author_id: ${{ REF(User4) }}
+  article_id: ${{ REF(Article10) }}

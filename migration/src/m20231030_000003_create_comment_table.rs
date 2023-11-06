@@ -20,18 +20,18 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Comment::Body).text())
+                    .col(ColumnDef::new(Comment::Body).text().not_null())
                     .col(ColumnDef::new(Comment::AuthorId).integer().not_null())
-                    .col(ColumnDef::new(Comment::ArticleSlug).string().not_null())
+                    .col(ColumnDef::new(Comment::ArticleId).integer().not_null())
                     .col(
                         ColumnDef::new(Comment::CreatedAt)
                             .timestamp()
-                            .extra("DEFAULT CURRENT_TIMESTAMP".to_string()),
+                            .default(Expr::current_timestamp()),
                     )
                     .col(
                         ColumnDef::new(Comment::UpdatedAt)
                             .timestamp()
-                            .extra("DEFAULT CURRENT_TIMESTAMP".to_string()),
+                            .default(Expr::current_timestamp()),
                     )
                     .foreign_key(
                         ForeignKey::create()
@@ -44,8 +44,8 @@ impl MigrationTrait for Migration {
                     .foreign_key(
                         ForeignKey::create()
                             .name("FK_comment_article")
-                            .from(Comment::Table, Comment::ArticleSlug)
-                            .to(Article::Table, Article::Slug)
+                            .from(Comment::Table, Comment::ArticleId)
+                            .to(Article::Table, Article::Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
@@ -67,7 +67,7 @@ enum Comment {
     Id,
     Body,
     AuthorId,
-    ArticleSlug,
+    ArticleId,
     CreatedAt,
     UpdatedAt,
 }

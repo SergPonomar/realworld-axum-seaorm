@@ -1,0 +1,30 @@
+Follower1:
+  user_id: ${{ REF(User1) }}
+  follower_id: ${{ REF(User2) }}
+Follower2:
+  user_id: ${{ REF(User1) }}
+  follower_id: ${{ REF(User3) }}
+Follower3:
+  user_id: ${{ REF(User1) }}
+  follower_id: ${{ REF(User5) }}
+Follower4:
+  user_id: ${{ REF(User2) }}
+  follower_id: ${{ REF(User1) }}
+Follower5:
+  user_id: ${{ REF(User2) }}
+  follower_id: ${{ REF(User3) }}
+Follower6:
+  user_id: ${{ REF(User3) }}
+  follower_id: ${{ REF(User1) }}
+Follower7:
+  user_id: ${{ REF(User3) }}
+  follower_id: ${{ REF(User2) }}
+Follower8:
+  user_id: ${{ REF(User3) }}
+  follower_id: ${{ REF(User5) }}
+Follower9:
+  user_id: ${{ REF(User4) }}
+  follower_id: ${{ REF(User4) }}
+Follower10:
+  user_id: ${{ REF(User4) }}
+  follower_id: ${{ REF(User3) }}

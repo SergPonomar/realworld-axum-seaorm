@@ -9,11 +9,13 @@ members = [".", "entity", "migration"]
 [dependencies]
 entity = { path = "entity" }
 migration = { path = "migration" }
+seed = { path = "seed" }
 tracing-subscriber = { version = "0.3" }
 sea-orm = { version = "0.12", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "debug-print" ] }
 tokio = { version = "1", features = ["full"] }
 axum = { version = "0.6" }
 dotenvy = { version = "0.15" }
+serde = { version = "1" }
 
 [dev-dependencies]
 serial_test = "*"

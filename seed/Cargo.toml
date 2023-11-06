@@ -1,12 +1,14 @@
 [package]
-name = "entity"
+name = "seed"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "entity"
+name = "seed"
 path = "src/lib.rs"
 
 [dependencies]
+entity = { path = "../entity" }
+cder = "0.2.0"
+anyhow = "1.0.75"
 sea-orm = { version = "0.12" }
-serde = { version = "1" }

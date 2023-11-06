@@ -1,5 +1,6 @@
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
+use seed::populate_seeds;
 use std::env;
 
 const DATABASE_URL: &str = "DATABASE_URL";
@@ -13,16 +14,9 @@ pub async fn start() -> Result<DatabaseConnection, DbErr> {
         .to_owned();
 
     let connection: DatabaseConnection = Database::connect(connect_options).await?;
+    let _res = populate_seeds(&connection).await;
 
     Migrator::up(&connection, None).await?;
 
-    test_connection(&connection).await;
-
     Ok(connection)
-}
-
-async fn test_connection(db: &DatabaseConnection) {
-    assert!(db.ping().await.is_ok());
-    let _ = db.clone().close().await;
-    assert!(matches!(db.ping().await, Err(DbErr::ConnectionAcquire(_))));
 }

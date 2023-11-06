@@ -1,0 +1,30 @@
+FavoritedArticle1:
+  article_id: ${{ REF(Article10) }}
+  user_id: ${{ REF(User1) }}
+FavoritedArticle2:
+  article_id: ${{ REF(Article5) }}
+  user_id: ${{ REF(User4) }}
+FavoritedArticle3:
+  article_id: ${{ REF(Article5) }}
+  user_id: ${{ REF(User1) }}
+FavoritedArticle4:
+  article_id: ${{ REF(Article5) }}
+  user_id: ${{ REF(User2) }}
+FavoritedArticle5:
+  article_id: ${{ REF(Article5) }}
+  user_id: ${{ REF(User3) }}
+FavoritedArticle6:
+  article_id: ${{ REF(Article1) }}
+  user_id: ${{ REF(User1) }}
+FavoritedArticle7:
+  article_id: ${{ REF(Article1) }}
+  user_id: ${{ REF(User2) }}
+FavoritedArticle8:
+  article_id: ${{ REF(Article1) }}
+  user_id: ${{ REF(User3) }}
+FavoritedArticle9:
+  article_id: ${{ REF(Article1) }}
+  user_id: ${{ REF(User4) }}
+FavoritedArticle10:
+  article_id: ${{ REF(Article1) }}
+  user_id: ${{ REF(User5) }}

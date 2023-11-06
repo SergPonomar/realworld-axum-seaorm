@@ -1,0 +1,23 @@
+User1:
+  email: 'alice@example.com'
+  username: Alice
+  bio: 'bio'
+  image: 'image'
+User2:
+  email: 'bob@example.com'
+  username: Bob
+  bio: 'fdblb fjklm f'
+  image: 'iml;kmv pojew dw'
+User3:
+  email: 'maria@example.com'
+  username: Maria
+  bio: 'fdv lkjfdv ld'
+User4:
+  email: 'elena@example.com'
+  username: Elena
+  bio: 'dfv dfk dfvpok dfvpok'
+  image: 'iml;kmv pojew dw'
+User5:
+  email: 'kiska@example.com'
+  username: Alex
+  bio: 'gb,. dfb;bd fe0piek=-okrbik'
