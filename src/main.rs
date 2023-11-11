@@ -12,8 +12,9 @@ async fn main() -> Result<(), DbErr> {
     // tracing_subscriber::registry().with(stdout_log).init();
 
     dotenv().expect(".env file not found");
-    let _connection = db::start().await?;
-    server::start().await;
+
+    let connection = db::start().await?;
+    server::start(connection).await;
 
     Ok(())
 }
