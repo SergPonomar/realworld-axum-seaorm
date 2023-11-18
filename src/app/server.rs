@@ -1,12 +1,17 @@
+use super::auth::{auth, create_token, optional_auth, Token};
+use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use axum::middleware::from_fn;
+use axum::Extension;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use chrono::Local;
 use entity::entities::{prelude::*, *};
 use migration::Alias;
+use rand_core::OsRng;
 use sea_orm::ActiveModelTrait;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
@@ -15,44 +20,52 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 use slug::slugify;
-use std::collections::HashMap;
 use std::env;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+use std::{collections::HashMap, println};
+use tower::ServiceBuilder;
 
 const DEFAULT_APP_PORT: u16 = 3000;
 const DEFAULT_APP_HOST: &str = "127.0.0.1";
 const APP_PORT: &str = "APP_PORT";
 const APP_HOST: &str = "APP_HOST";
-
-// TODO: For test only, delete authenticated_user variable
-const AUTHENTICATED_USER_ID: u64 = 28;
-const TEST_TOKEN: &str = "sdvlvnfiugqef87o6we;lnk";
+// const AUTHENTICATED_USER_ID: u64 = 28;
 
 pub async fn start(connection: DatabaseConnection) {
-    let app = Router::new()
-        .route("/api/user", get(get_current_user).put(update_user))
+    let optional_auth_routes = Router::new()
+        .route("/api/users", post(register_user))
+        .route("/api/users/login", post(login_user))
         .route("/api/profiles/:username", get(get_profile))
+        .route("/api/articles", get(list_articles))
+        .route("/api/articles/:slug", get(get_article))
+        .route("/api/articles/:slug/comments", get(list_comments))
+        .route("/api/tags", get(list_tags))
+        .layer(ServiceBuilder::new().layer(from_fn(optional_auth)));
+
+    let auth_routes = Router::new()
+        .route("/api/user", put(update_user).get(get_current_user))
         .route(
             "/api/profiles/:username/follow",
             post(follow_user).delete(unfollow_user),
         )
-        .route("/api/articles", get(list_articles).post(create_article))
+        .route("/api/articles", post(create_article))
         .route("/api/articles/feed", get(feed_articles))
         .route(
             "/api/articles/:slug",
-            get(get_article).put(update_article).delete(delete_article),
+            put(update_article).delete(delete_article),
         )
         .route(
             "/api/articles/:slug/favorite",
             post(favorite_article).delete(unfavorite_article),
         )
-        .route(
-            "/api/articles/:slug/comments",
-            get(list_comments).post(create_comment),
-        )
+        .route("/api/articles/:slug/comments", post(create_comment))
         .route("/api/articles/:slug/comments/:id", delete(delete_comment))
-        .route("/api/tags", get(list_tags))
+        .layer(ServiceBuilder::new().layer(from_fn(auth)));
+
+    let app = Router::new()
+        .merge(auth_routes)
+        .merge(optional_auth_routes)
         .with_state(connection);
 
     let addr = get_socket_address();
@@ -80,20 +93,120 @@ struct UserWithToken {
 
 impl FromQueryResult for UserWithToken {
     fn from_query_result(res: &sea_orm::QueryResult, pre: &str) -> Result<Self, sea_orm::DbErr> {
+        let username: String = res.try_get(pre, "username")?;
+
         Ok(Self {
-            token: TEST_TOKEN.to_string(),
+            token: create_token(&username).unwrap(),
             email: res.try_get(pre, "email")?,
-            username: res.try_get(pre, "username")?,
+            username,
             bio: res.try_get(pre, "bio")?,
             image: res.try_get(pre, "image")?,
         })
     }
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LoginUser {
+    email: String,
+    password: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct LoginUserDto {
+    user: LoginUser,
+}
+
+async fn login_user(
+    State(db): State<DatabaseConnection>,
+    Json(payload): Json<LoginUserDto>,
+) -> Result<Json<UserDto>, (StatusCode, String)> {
+    let input = payload.user;
+
+    let user_pass = User::find()
+        .filter(user::Column::Email.eq(&input.email))
+        .select_only()
+        .column(user::Column::Password)
+        .into_tuple::<String>()
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    println!("{:#?}", input);
+    let is_valid = match PasswordHash::new(&user_pass.unwrap()) {
+        Ok(parsed_hash) => Argon2::default()
+            .verify_password(input.password.as_bytes(), &parsed_hash)
+            .map_or(false, |_| true),
+        Err(_) => false,
+    };
+
+    if !is_valid {
+        return Err((StatusCode::INTERNAL_SERVER_ERROR, "WRONG PASSWORD".into()));
+    }
+
+    let current_user = User::find()
+        .filter(user::Column::Email.eq(input.email))
+        .into_model::<UserWithToken>()
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let user_dto = UserDto { user: current_user };
+    Ok(Json(user_dto))
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct RegisterUser {
+    username: String,
+    email: String,
+    password: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct RegisterUserDto {
+    user: RegisterUser,
+}
+
+async fn register_user(
+    State(db): State<DatabaseConnection>,
+    Json(payload): Json<RegisterUserDto>,
+) -> Result<Json<UserDto>, (StatusCode, String)> {
+    let input = payload.user;
+
+    let salt = SaltString::generate(&mut OsRng);
+    let hashed_password = Argon2::default()
+        .hash_password(input.password.as_bytes(), &salt)
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))
+        .map(|hash| hash.to_string())?;
+
+    let user_model = user::ActiveModel {
+        email: Set(input.email),
+        username: Set(input.username),
+        password: Set(hashed_password),
+        ..Default::default()
+    };
+
+    let user_res = User::insert::<user::ActiveModel>(user_model)
+        .exec(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let current_user = User::find_by_id(user_res.last_insert_id)
+        .into_model::<UserWithToken>()
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let user_dto = UserDto { user: current_user };
+    Ok(Json(user_dto))
+}
+
 async fn get_current_user(
     State(db): State<DatabaseConnection>,
+    Extension(token): Extension<Token>,
 ) -> Result<Json<UserDto>, (StatusCode, String)> {
-    let current_user = User::find_by_id(AUTHENTICATED_USER_ID as i32)
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
         .into_model::<UserWithToken>()
         .one(&db)
         .await
@@ -120,11 +233,13 @@ struct UpdateUserDto {
 
 async fn update_user(
     State(db): State<DatabaseConnection>,
+    Extension(token): Extension<Token>,
     Json(payload): Json<UpdateUserDto>,
 ) -> Result<Json<UserDto>, (StatusCode, String)> {
     let input = payload.user;
 
-    let finded: Option<user::Model> = User::find_by_id(AUTHENTICATED_USER_ID as i32)
+    let finded: Option<user::Model> = User::find()
+        .filter(user::Column::Username.eq(&token.username))
         .one(&db)
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
@@ -149,7 +264,8 @@ async fn update_user(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    let current_user = User::find_by_id(AUTHENTICATED_USER_ID as i32)
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
         .into_model::<UserWithToken>()
         .one(&db)
         .await
@@ -174,8 +290,19 @@ struct ProfileDto {
 
 async fn get_profile(
     State(db): State<DatabaseConnection>,
+    maybe_token: Option<Extension<Token>>,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileDto>, (StatusCode, String)> {
+    let current_user = if let Some(token) = maybe_token {
+        User::find()
+            .filter(user::Column::Username.eq(&token.username))
+            .one(&db)
+            .await
+            .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?
+    } else {
+        None
+    };
+
     let profile = User::find()
         .filter(user::Column::Username.eq(username))
         .column_as(
@@ -184,7 +311,10 @@ async fn get_profile(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match current_user {
+                        Some(user) => follower::Column::FollowerId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "following",
@@ -200,6 +330,7 @@ async fn get_profile(
 
 async fn follow_user(
     State(db): State<DatabaseConnection>,
+    Extension(token): Extension<Token>,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileDto>, (StatusCode, String)> {
     let finded: Option<user::Model> = User::find()
@@ -208,9 +339,15 @@ async fn follow_user(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
     let follower_model = follower::ActiveModel {
         user_id: Set(finded.as_ref().unwrap().id),
-        follower_id: Set(AUTHENTICATED_USER_ID as i32),
+        follower_id: Set(current_user.as_ref().unwrap().id),
     };
 
     let _flw_res = follower_model
@@ -226,7 +363,10 @@ async fn follow_user(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match current_user {
+                        Some(user) => follower::Column::FollowerId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "following",
@@ -242,6 +382,7 @@ async fn follow_user(
 
 async fn unfollow_user(
     State(db): State<DatabaseConnection>,
+    Extension(token): Extension<Token>,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileDto>, (StatusCode, String)> {
     let finded: Option<user::Model> = User::find()
@@ -250,9 +391,15 @@ async fn unfollow_user(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
     let follower_model = follower::ActiveModel {
         user_id: Set(finded.as_ref().unwrap().id),
-        follower_id: Set(AUTHENTICATED_USER_ID as i32),
+        follower_id: Set(current_user.as_ref().unwrap().id),
     };
 
     let _flw_res = follower_model
@@ -268,7 +415,10 @@ async fn unfollow_user(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match current_user {
+                        Some(user) => follower::Column::FollowerId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "following",
@@ -326,6 +476,7 @@ impl FromQueryResult for ArticleWithAuthor {
 
 async fn list_articles(
     Query(params): Query<HashMap<String, String>>,
+    maybe_token: Option<Extension<Token>>,
     State(db): State<DatabaseConnection>,
 ) -> Result<Json<ArticlesDto>, (StatusCode, String)> {
     // Filter by tag:
@@ -355,6 +506,16 @@ async fn list_articles(
     let offset = params
         .get(&"offset".to_string())
         .map_or(0, |off| off.parse().unwrap_or(0));
+
+    let current_user = if let Some(token) = maybe_token {
+        User::find()
+            .filter(user::Column::Username.eq(&token.username))
+            .one(&db)
+            .await
+            .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?
+    } else {
+        None
+    };
 
     let articles = Article::find()
         .join(JoinType::LeftJoin, article::Relation::User.def())
@@ -406,7 +567,10 @@ async fn list_articles(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match &current_user {
+                        Some(user) => follower::Column::FollowerId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "following",
@@ -416,7 +580,10 @@ async fn list_articles(
                 FavoritedArticle::find()
                     .select_only()
                     .column(favorited_article::Column::ArticleId)
-                    .filter(favorited_article::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match &current_user {
+                        Some(user) => follower::Column::UserId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "favorited",
@@ -448,6 +615,7 @@ async fn list_articles(
 
 async fn feed_articles(
     Query(params): Query<HashMap<String, String>>,
+    Extension(token): Extension<Token>,
     State(db): State<DatabaseConnection>,
 ) -> Result<Json<ArticlesDto>, (StatusCode, String)> {
     // Limit number of articles (default is 20):
@@ -460,13 +628,21 @@ async fn feed_articles(
         .get(&"offset".to_string())
         .map_or(0, |off| off.parse().unwrap_or(0));
 
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let current_user_id = current_user.unwrap().id;
+
     let articles = Article::find()
         .join(JoinType::LeftJoin, article::Relation::User.def())
         .column(user::Column::Username)
         .filter(
             user::Column::Id.in_subquery(
                 Follower::find()
-                    .filter(follower::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(follower::Column::UserId.eq(current_user_id))
                     .select_only()
                     .column(follower::Column::FollowerId)
                     .into_query(),
@@ -478,7 +654,7 @@ async fn feed_articles(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(follower::Column::FollowerId.eq(current_user_id))
                     .into_query(),
             ),
             "following",
@@ -488,7 +664,7 @@ async fn feed_articles(
                 FavoritedArticle::find()
                     .select_only()
                     .column(favorited_article::Column::ArticleId)
-                    .filter(favorited_article::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(favorited_article::Column::UserId.eq(current_user_id))
                     .into_query(),
             ),
             "favorited",
@@ -520,8 +696,19 @@ async fn feed_articles(
 
 async fn get_article(
     State(db): State<DatabaseConnection>,
+    maybe_token: Option<Extension<Token>>,
     Path(slug): Path<String>,
 ) -> Result<Json<ArticleDto>, (StatusCode, String)> {
+    let current_user = if let Some(token) = maybe_token {
+        User::find()
+            .filter(user::Column::Username.eq(&token.username))
+            .one(&db)
+            .await
+            .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?
+    } else {
+        None
+    };
+
     let article = Article::find()
         .filter(article::Column::Slug.eq(slug))
         .join(JoinType::LeftJoin, article::Relation::User.def())
@@ -532,7 +719,10 @@ async fn get_article(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match &current_user {
+                        Some(user) => follower::Column::FollowerId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "following",
@@ -542,7 +732,10 @@ async fn get_article(
                 FavoritedArticle::find()
                     .select_only()
                     .column(favorited_article::Column::ArticleId)
-                    .filter(favorited_article::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match current_user {
+                        Some(user) => favorited_article::Column::UserId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "favorited",
@@ -585,8 +778,17 @@ struct CreateArticleDto {
 
 async fn create_article(
     State(db): State<DatabaseConnection>,
+    Extension(token): Extension<Token>,
     Json(payload): Json<CreateArticleDto>,
 ) -> Result<Json<ArticleDto>, (StatusCode, String)> {
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let current_user_id = current_user.unwrap().id;
+
     let input = payload.article;
 
     let article_model = article::ActiveModel {
@@ -594,7 +796,7 @@ async fn create_article(
         title: Set(input.title),
         description: Set(input.description),
         body: Set(input.body),
-        author_id: Set(AUTHENTICATED_USER_ID as i32),
+        author_id: Set(current_user_id as i32),
         ..Default::default()
     };
 
@@ -653,7 +855,7 @@ async fn create_article(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(follower::Column::FollowerId.eq(current_user_id))
                     .into_query(),
             ),
             "following",
@@ -663,7 +865,7 @@ async fn create_article(
                 FavoritedArticle::find()
                     .select_only()
                     .column(favorited_article::Column::ArticleId)
-                    .filter(favorited_article::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(favorited_article::Column::UserId.eq(current_user_id))
                     .into_query(),
             ),
             "favorited",
@@ -708,8 +910,17 @@ struct UpdateArticleDto {
 async fn update_article(
     Path(slug): Path<String>,
     State(db): State<DatabaseConnection>,
+    Extension(token): Extension<Token>,
     Json(payload): Json<UpdateArticleDto>,
 ) -> Result<Json<ArticleDto>, (StatusCode, String)> {
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let current_user_id = current_user.unwrap().id;
+
     let input = payload.article;
 
     let finded: Option<article::Model> = Article::find()
@@ -753,7 +964,7 @@ async fn update_article(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(follower::Column::FollowerId.eq(current_user_id))
                     .into_query(),
             ),
             "following",
@@ -763,7 +974,7 @@ async fn update_article(
                 FavoritedArticle::find()
                     .select_only()
                     .column(favorited_article::Column::ArticleId)
-                    .filter(favorited_article::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(favorited_article::Column::UserId.eq(current_user_id))
                     .into_query(),
             ),
             "favorited",
@@ -824,8 +1035,17 @@ async fn delete_article(
 
 async fn favorite_article(
     Path(slug): Path<String>,
+    Extension(token): Extension<Token>,
     State(db): State<DatabaseConnection>,
 ) -> Result<Json<ArticleDto>, (StatusCode, String)> {
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let current_user_id = current_user.unwrap().id;
+
     let finded: Option<article::Model> = Article::find()
         .filter(article::Column::Slug.eq(slug))
         .one(&db)
@@ -834,7 +1054,7 @@ async fn favorite_article(
 
     let favorite_article_model = favorited_article::ActiveModel {
         article_id: Set(finded.as_ref().unwrap().id),
-        user_id: Set(AUTHENTICATED_USER_ID as i32),
+        user_id: Set(current_user_id as i32),
     };
 
     let _art_res = favorite_article_model
@@ -851,7 +1071,7 @@ async fn favorite_article(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(follower::Column::FollowerId.eq(current_user_id))
                     .into_query(),
             ),
             "following",
@@ -861,7 +1081,7 @@ async fn favorite_article(
                 FavoritedArticle::find()
                     .select_only()
                     .column(favorited_article::Column::ArticleId)
-                    .filter(favorited_article::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(favorited_article::Column::UserId.eq(current_user_id))
                     .into_query(),
             ),
             "favorited",
@@ -902,8 +1122,17 @@ async fn favorite_article(
 
 async fn unfavorite_article(
     Path(slug): Path<String>,
+    Extension(token): Extension<Token>,
     State(db): State<DatabaseConnection>,
 ) -> Result<Json<ArticleDto>, (StatusCode, String)> {
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let current_user_id = current_user.unwrap().id;
+
     let finded: Option<article::Model> = Article::find()
         .filter(article::Column::Slug.eq(slug))
         .one(&db)
@@ -912,7 +1141,7 @@ async fn unfavorite_article(
 
     let favorite_article_model = favorited_article::ActiveModel {
         article_id: Set(finded.as_ref().unwrap().id),
-        user_id: Set(AUTHENTICATED_USER_ID as i32),
+        user_id: Set(current_user_id as i32),
     };
 
     let _art_res = favorite_article_model
@@ -929,7 +1158,7 @@ async fn unfavorite_article(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(follower::Column::FollowerId.eq(current_user_id))
                     .into_query(),
             ),
             "following",
@@ -939,7 +1168,7 @@ async fn unfavorite_article(
                 FavoritedArticle::find()
                     .select_only()
                     .column(favorited_article::Column::ArticleId)
-                    .filter(favorited_article::Column::UserId.eq(AUTHENTICATED_USER_ID))
+                    .filter(favorited_article::Column::UserId.eq(current_user_id))
                     .into_query(),
             ),
             "favorited",
@@ -1024,8 +1253,17 @@ impl FromQueryResult for CommentWithAuthor {
 async fn create_comment(
     Path(slug): Path<String>,
     State(db): State<DatabaseConnection>,
+    Extension(token): Extension<Token>,
     Json(payload): Json<CreateCommentDto>,
 ) -> Result<Json<CommentDto>, (StatusCode, String)> {
+    let current_user = User::find()
+        .filter(user::Column::Username.eq(token.username))
+        .one(&db)
+        .await
+        .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+    let current_user_id = current_user.unwrap().id;
+
     let input = payload.comment;
 
     // Find Article
@@ -1037,7 +1275,7 @@ async fn create_comment(
 
     let comment_model = comment::ActiveModel {
         body: Set(input.body),
-        author_id: Set(AUTHENTICATED_USER_ID as i32),
+        author_id: Set(current_user_id as i32),
         article_id: Set(finded.unwrap().id),
         ..Default::default()
     };
@@ -1056,7 +1294,7 @@ async fn create_comment(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(follower::Column::FollowerId.eq(current_user_id))
                     .into_query(),
             ),
             "following",
@@ -1072,8 +1310,19 @@ async fn create_comment(
 
 async fn list_comments(
     Path(slug): Path<String>,
+    maybe_token: Option<Extension<Token>>,
     State(db): State<DatabaseConnection>,
 ) -> Result<Json<CommentsDto>, (StatusCode, String)> {
+    let current_user = if let Some(token) = maybe_token {
+        User::find()
+            .filter(user::Column::Username.eq(&token.username))
+            .one(&db)
+            .await
+            .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?
+    } else {
+        None
+    };
+
     // Find Article
     let finded: Option<article::Model> = Article::find()
         .filter(article::Column::Slug.eq(slug))
@@ -1091,7 +1340,10 @@ async fn list_comments(
                     .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
                     .select_only()
                     .column(follower::Column::UserId)
-                    .filter(follower::Column::FollowerId.eq(AUTHENTICATED_USER_ID))
+                    .filter(match &current_user {
+                        Some(user) => follower::Column::FollowerId.eq(user.id),
+                        None => false.into(),
+                    })
                     .into_query(),
             ),
             "following",

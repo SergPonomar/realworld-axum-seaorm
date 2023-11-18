@@ -12,3 +12,5 @@ entity = { path = "../entity" }
 cder = "0.2.0"
 anyhow = "1.0.75"
 sea-orm = { version = "0.12" }
+argon2 = "0.5.2"
+rand_core = { version = "0.6.4", features = ["std"] }

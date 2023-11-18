@@ -1,6 +1,9 @@
 use anyhow::Result;
+use argon2::{password_hash::SaltString, Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use cder::DatabaseSeeder;
 use entity::entities::{prelude::*, *};
+use rand_core::OsRng;
+use sea_orm::ActiveValue::Set;
 use sea_orm::{sea_query::OnConflict, ActiveModelTrait, DatabaseConnection, EntityTrait, Iterable};
 
 pub async fn populate_seeds(db: &DatabaseConnection) -> Result<()> {
@@ -23,6 +26,15 @@ async fn seed_user(seeder: &mut DatabaseSeeder, db: &DatabaseConnection) -> Resu
             if active_model.image.as_ref().is_none() {
                 active_model.image.take();
             }
+
+            let salt = SaltString::generate(&mut OsRng);
+            let hashed_password = Argon2::default()
+                .hash_password(active_model.password.as_ref().as_bytes(), &salt)
+                .map(|hash| hash.to_string())
+                .unwrap();
+
+            active_model.password = Set(hashed_password);
+
             active_model = active_model.reset_all();
 
             let res = User::insert::<user::ActiveModel>(active_model)

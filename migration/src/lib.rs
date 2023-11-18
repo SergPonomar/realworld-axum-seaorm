@@ -7,6 +7,7 @@ mod m20231030_000004_create_tag_table;
 mod m20231030_000005_create_article_tag_table;
 mod m20231101_000006_create_follower_table;
 mod m20231104_000007_create_favorited_article_table;
+mod m20231112_000008_add_user_password;
 
 pub struct Migrator;
 
@@ -21,6 +22,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20231030_000005_create_article_tag_table::Migration),
             Box::new(m20231101_000006_create_follower_table::Migration),
             Box::new(m20231104_000007_create_favorited_article_table::Migration),
+            Box::new(m20231112_000008_add_user_password::Migration),
         ]
     }
 }

@@ -7,8 +7,10 @@ use serde::Deserialize;
 #[sea_orm(schema_name = "realworld_schema", table_name = "article_tag")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
+    #[serde(skip_deserializing)]
     pub tag_id: i32,
     #[sea_orm(primary_key, auto_increment = false)]
+    #[serde(skip_deserializing)]
     pub article_id: i32,
 }
 
