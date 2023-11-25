@@ -13,16 +13,10 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Comment::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Comment::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(Comment::Id).uuid().not_null().primary_key())
                     .col(ColumnDef::new(Comment::Body).text().not_null())
-                    .col(ColumnDef::new(Comment::AuthorId).integer().not_null())
-                    .col(ColumnDef::new(Comment::ArticleId).integer().not_null())
+                    .col(ColumnDef::new(Comment::AuthorId).uuid().not_null())
+                    .col(ColumnDef::new(Comment::ArticleId).uuid().not_null())
                     .col(
                         ColumnDef::new(Comment::CreatedAt)
                             .timestamp()

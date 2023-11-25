@@ -20,10 +20,10 @@ impl MigrationTrait for Migration {
                             .col(Follower::UserId)
                             .col(Follower::FollowerId),
                     )
-                    .col(ColumnDef::new(Follower::UserId).integer().not_null())
+                    .col(ColumnDef::new(Follower::UserId).uuid().not_null())
                     .col(
                         ColumnDef::new(Follower::FollowerId)
-                            .integer()
+                            .uuid()
                             .not_null()
                             .check(
                                 Expr::col(Follower::UserId)

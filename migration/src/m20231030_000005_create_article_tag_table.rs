@@ -21,8 +21,8 @@ impl MigrationTrait for Migration {
                             .col(ArticleTag::TagId)
                             .col(ArticleTag::ArticleId),
                     )
-                    .col(ColumnDef::new(ArticleTag::TagId).integer().not_null())
-                    .col(ColumnDef::new(ArticleTag::ArticleId).integer().not_null())
+                    .col(ColumnDef::new(ArticleTag::TagId).uuid().not_null())
+                    .col(ColumnDef::new(ArticleTag::ArticleId).uuid().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("FK_article-tag_tag")

@@ -1,6 +1,6 @@
+use crate::seed::{empty_all_tables, populate_seeds};
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ConnectOptions, Database, DatabaseConnection, DbErr};
-use seed::populate_seeds;
 use std::env;
 
 const DATABASE_URL: &str = "DATABASE_URL";
@@ -14,7 +14,8 @@ pub async fn start() -> Result<DatabaseConnection, DbErr> {
         .to_owned();
 
     let connection: DatabaseConnection = Database::connect(connect_options).await?;
-    let _res = populate_seeds(&connection).await;
+    let _empty_res = empty_all_tables(&connection).await;
+    let _seed_res = populate_seeds(&connection).await;
 
     Migrator::up(&connection, None).await?;
 

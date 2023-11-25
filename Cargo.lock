@@ -596,8 +596,7 @@ dependencies = [
 [[package]]
 name = "cder"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31012bc8708dc1d99c453c07e423101d05b13536abd63124920249d2424257d9"
+source = "git+https://github.com/SergPonomar/cder?branch=add-uuid-support#9415779a36ba228fad12720de82af93780cf5210"
 dependencies = [
  "anyhow",
  "once_cell",
@@ -1911,10 +1910,12 @@ dependencies = [
 name = "realworld-axum-seaorm"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "argon2",
  "axum",
  "axum-extra",
  "bytes",
+ "cder",
  "chrono",
  "dotenvy",
  "entity",
@@ -1922,7 +1923,6 @@ dependencies = [
  "migration",
  "rand_core",
  "sea-orm",
- "seed",
  "serde",
  "serde_json",
  "serial_test",
@@ -1931,6 +1931,7 @@ dependencies = [
  "tokio",
  "tower",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
@@ -2328,18 +2329,6 @@ name = "seahash"
 version = "4.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
-
-[[package]]
-name = "seed"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "argon2",
- "cder",
- "entity",
- "rand_core",
- "sea-orm",
-]
 
 [[package]]
 name = "serde"
@@ -3174,6 +3163,7 @@ version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88ad59a7560b41a70d191093a945f0b87bc1deeda46fb237479708a1d6b6cdfc"
 dependencies = [
+ "getrandom",
  "serde",
 ]
 

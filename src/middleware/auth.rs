@@ -10,6 +10,7 @@ use axum::{
 use bytes::Bytes;
 use chrono::Duration;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use sea_orm::prelude::Uuid;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
@@ -19,7 +20,7 @@ const SECRET_KEY: &str = "SECRET_KEY";
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Token {
     exp: usize,
-    pub username: String,
+    pub id: Uuid,
 }
 
 impl Credentials for Token {
@@ -94,14 +95,11 @@ pub async fn optional_auth<B: std::fmt::Debug>(
     Ok(response)
 }
 
-pub fn create_token(username: &str) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn create_token(id: Uuid) -> Result<String, jsonwebtoken::errors::Error> {
     let now = chrono::Utc::now();
     let expires_at = now + Duration::seconds(100);
     let exp = expires_at.timestamp() as usize;
-    let claims = Token {
-        exp,
-        username: username.to_string(),
-    };
+    let claims = Token { exp, id };
     let token_header = Header::default();
 
     let secret = get_secret_key();

@@ -3,7 +3,11 @@ use sea_orm::DbErr;
 // use tracing_subscriber::util::SubscriberInitExt;
 
 use dotenvy::dotenv;
+mod api;
 mod app;
+mod middleware;
+mod repo;
+mod seed;
 use app::{db, server};
 
 #[tokio::main]

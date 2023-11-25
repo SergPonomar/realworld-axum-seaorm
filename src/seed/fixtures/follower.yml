@@ -24,7 +24,7 @@ Follower8:
   follower_id: ${{ REF(User5) }}
 Follower9:
   user_id: ${{ REF(User4) }}
-  follower_id: ${{ REF(User4) }}
+  follower_id: ${{ REF(User2) }}
 Follower10:
   user_id: ${{ REF(User4) }}
   follower_id: ${{ REF(User3) }}

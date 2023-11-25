@@ -7,11 +7,9 @@ use serde::Deserialize;
 #[sea_orm(schema_name = "realworld_schema", table_name = "follower")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    #[serde(skip_deserializing)]
-    pub user_id: i32,
+    pub user_id: Uuid,
     #[sea_orm(primary_key, auto_increment = false)]
-    #[serde(skip_deserializing)]
-    pub follower_id: i32,
+    pub follower_id: Uuid,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

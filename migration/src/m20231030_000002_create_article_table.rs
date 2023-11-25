@@ -12,13 +12,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Article::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Article::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(Article::Id).uuid().not_null().primary_key())
                     .col(
                         ColumnDef::new(Article::Slug)
                             .string()
@@ -28,7 +22,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Article::Title).string().not_null())
                     .col(ColumnDef::new(Article::Description).string().not_null())
                     .col(ColumnDef::new(Article::Body).text().not_null())
-                    .col(ColumnDef::new(Article::AuthorId).integer().not_null())
+                    .col(ColumnDef::new(Article::AuthorId).uuid().not_null())
                     .col(
                         ColumnDef::new(Article::CreatedAt)
                             .timestamp()

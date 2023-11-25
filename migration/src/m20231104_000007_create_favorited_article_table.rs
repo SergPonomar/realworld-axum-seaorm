@@ -23,14 +23,10 @@ impl MigrationTrait for Migration {
                     )
                     .col(
                         ColumnDef::new(FavoritedArticle::ArticleId)
-                            .integer()
+                            .uuid()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(FavoritedArticle::UserId)
-                            .integer()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(FavoritedArticle::UserId).uuid().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("FK_favorited_article-article")

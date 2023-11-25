@@ -11,13 +11,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(Tag::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(Tag::Id)
-                            .integer()
-                            .not_null()
-                            .auto_increment()
-                            .primary_key(),
-                    )
+                    .col(ColumnDef::new(Tag::Id).uuid().not_null().primary_key())
                     .col(
                         ColumnDef::new(Tag::TagName)
                             .string()

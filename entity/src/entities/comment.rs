@@ -6,13 +6,13 @@ use serde::Deserialize;
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
 #[sea_orm(schema_name = "realworld_schema", table_name = "comment")]
 pub struct Model {
-    #[sea_orm(primary_key)]
+    #[sea_orm(primary_key, auto_increment = false)]
     #[serde(skip_deserializing)]
-    pub id: i32,
+    pub id: Uuid,
     #[sea_orm(column_type = "Text")]
     pub body: String,
-    pub author_id: i32,
-    pub article_id: i32,
+    pub author_id: Uuid,
+    pub article_id: Uuid,
     pub created_at: Option<DateTime>,
     pub updated_at: Option<DateTime>,
 }
