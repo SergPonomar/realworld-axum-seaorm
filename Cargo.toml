@@ -33,3 +33,4 @@ cder = { git = "https://github.com/SergPonomar/cder", branch = "add-uuid-support
 
 [dev-dependencies]
 serial_test = "*"
+sea-orm = { version = "0.12", features = [ "sqlx-sqlite", "runtime-tokio-rustls", "macros", "debug-print", "with-uuid" ] }

@@ -158,8 +158,8 @@ pub async fn create_article(
 
     let article_tag_models = tags_ids
         .iter()
-        .map(|x| article_tag::ActiveModel {
-            tag_id: Set(x.id),
+        .map(|&id| article_tag::ActiveModel {
+            tag_id: Set(id),
             article_id: Set(art_res.last_insert_id),
         })
         .collect::<Vec<article_tag::ActiveModel>>();

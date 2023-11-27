@@ -8,6 +8,7 @@ mod app;
 mod middleware;
 mod repo;
 mod seed;
+mod tests;
 use app::{db, server};
 
 #[tokio::main]

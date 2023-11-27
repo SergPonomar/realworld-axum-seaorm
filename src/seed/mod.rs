@@ -95,7 +95,6 @@ async fn seed_comment(seeder: &mut DatabaseSeeder, db: &DatabaseConnection) -> R
         .populate_async(
             "src/seed/fixtures/comment.yml",
             |model: comment::Model| async move {
-                println!("{:#?}", model);
                 let mut active_model: comment::ActiveModel = model.into();
                 active_model.id = Set(Uuid::new_v4());
                 if active_model.updated_at.as_ref().is_none() {
@@ -139,7 +138,6 @@ async fn seed_article_tag(seeder: &mut DatabaseSeeder, db: &DatabaseConnection) 
         .populate_async(
             "src/seed/fixtures/article_tag.yml",
             |model: article_tag::Model| async move {
-                println!("{:#?}", model);
                 let mut active_model: article_tag::ActiveModel = model.into();
                 active_model = active_model.reset_all();
 
