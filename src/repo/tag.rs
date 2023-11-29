@@ -32,7 +32,7 @@ pub async fn create_tags(
 /// Insert `tag` for the provided `ActiveModel`. Ignore models with existing tag names.
 /// Returns `InsertResult` with last inserted id on success, otherwise
 /// returns an `database error`.
-/// Empty input produce error as not allowed on database level.
+/// Empty tag name produce error as not allowed on database level.
 /// See [`InsertResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.InsertResult.html)
 /// documentation for more details.
 pub async fn insert_tag(
