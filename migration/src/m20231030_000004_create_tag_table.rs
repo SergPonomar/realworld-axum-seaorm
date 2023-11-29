@@ -15,6 +15,7 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(Tag::TagName)
                             .string()
+                            .check(Expr::col(Tag::TagName).ne(""))
                             .unique_key()
                             .not_null(),
                     )

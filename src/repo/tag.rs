@@ -1,16 +1,23 @@
 use entity::entities::{prelude::Tag, tag};
-use migration::OnConflict;
-use migration::{Alias, Expr};
+use migration::{Alias, Expr, OnConflict};
 use sea_orm::{
     DatabaseConnection, DbErr, DeleteResult, EntityTrait, InsertResult, QueryFilter, QuerySelect,
     TryInsertResult,
 };
 use uuid::Uuid;
 
+/// Insert `tags` for the provided `ActiveModel`s. Ignore models with existing tag names.
+/// Returns `Inserted(InsertResult)` with last inserted id on success, otherwise
+/// returns an `database error`.
+/// Empty input produce `Empty` result.
+/// See [`TryInsertResult`](https://docs.rs/sea-orm/latest/sea_orm/enum.TryInsertResult.html)
+/// documentation for more details.
 pub async fn create_tags(
     db: &DatabaseConnection,
     tags: Vec<tag::ActiveModel>,
 ) -> Result<TryInsertResult<InsertResult<tag::ActiveModel>>, DbErr> {
+    // Filter empty tag names
+    let tags = tags.into_iter().filter(|model| !model.is_empty());
     Tag::insert_many(tags)
         .on_conflict(
             OnConflict::column(tag::Column::TagName)
@@ -22,6 +29,12 @@ pub async fn create_tags(
         .await
 }
 
+/// Insert `tag` for the provided `ActiveModel`. Ignore models with existing tag names.
+/// Returns `InsertResult` with last inserted id on success, otherwise
+/// returns an `database error`.
+/// Empty input produce error as not allowed on database level.
+/// See [`InsertResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.InsertResult.html)
+/// documentation for more details.
 pub async fn insert_tag(
     db: &DatabaseConnection,
     tag: tag::ActiveModel,
@@ -30,7 +43,12 @@ pub async fn insert_tag(
     Tag::insert(tag).exec(db).await
 }
 
+/// Fetch `tag ids` for the provided `tag names`. Ignore not existing tag names.
+/// Returns `list of tag names` on success, otherwise returns an `database error`.
+/// Empty input produce empty result.
 pub async fn get_tags_ids(db: &DatabaseConnection, tags: Vec<String>) -> Result<Vec<Uuid>, DbErr> {
+    // Filter empty tag names
+    let tags: Vec<String> = tags.into_iter().filter(|tg| !tg.is_empty()).collect();
     if tags.len() == 0 {
         return Ok(Vec::new());
     };
@@ -41,6 +59,8 @@ pub async fn get_tags_ids(db: &DatabaseConnection, tags: Vec<String>) -> Result<
         .await
 }
 
+/// Fetch all `tag names` from database.
+/// Returns `list of tag names` on success, otherwise returns an `database error`.
 pub async fn get_tags(db: &DatabaseConnection) -> Result<Vec<String>, DbErr> {
     Tag::find()
         .select_only()
@@ -50,6 +70,11 @@ pub async fn get_tags(db: &DatabaseConnection) -> Result<Vec<String>, DbErr> {
         .await
 }
 
+/// Delete all existing `tag records` from database.
+/// Returns `DeleteResult` with affected rows count on success, otherwise
+/// returns an `database error`.
+/// See [`DeleteResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.DeleteResult.html)
+/// documentation for more details.
 pub async fn empty_tag_table(db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     Tag::delete_many().exec(db).await
 }
@@ -57,20 +82,20 @@ pub async fn empty_tag_table(db: &DatabaseConnection) -> Result<DeleteResult, Db
 #[cfg(test)]
 mod test_create_tags {
     use super::{create_tags, insert_tag};
-    use crate::tests::{create_table_for_test_db, init_test_db_connection};
-    use entity::entities::{prelude::Tag, tag};
+    use crate::tests::{execute_migration, init_test_db_connection};
+    use entity::entities::tag;
     use sea_orm::{
         DbErr, Set,
         TryInsertResult::{Conflicted, Empty, Inserted},
     };
     use std::vec;
     use uuid::Uuid;
+    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
     async fn insert_not_exist_data() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let models: Vec<tag::ActiveModel> = (1..=5)
             .map(|x| tag::ActiveModel {
@@ -95,8 +120,7 @@ mod test_create_tags {
     #[tokio::test]
     async fn insert_existing_id() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let models: Vec<tag::ActiveModel> = (1..=5)
             .map(|x| tag::ActiveModel {
@@ -125,8 +149,7 @@ mod test_create_tags {
     #[tokio::test]
     async fn insert_existing_tag_name() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let models: Vec<tag::ActiveModel> = (1..=5)
             .map(|x| tag::ActiveModel {
@@ -157,8 +180,7 @@ mod test_create_tags {
     #[tokio::test]
     async fn insert_empty_collection() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let models = vec![];
 
@@ -176,16 +198,16 @@ mod test_create_tags {
 #[cfg(test)]
 mod test_insert_tag {
     use super::insert_tag;
-    use crate::tests::{create_table_for_test_db, init_test_db_connection};
-    use entity::entities::{prelude::Tag, tag};
+    use crate::tests::{execute_migration, init_test_db_connection};
+    use entity::entities::tag;
     use sea_orm::{DbErr, Set};
     use uuid::Uuid;
+    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
     async fn insert_not_exist_data() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let id = Uuid::new_v4();
         let model = tag::ActiveModel {
@@ -202,8 +224,7 @@ mod test_insert_tag {
     #[tokio::test]
     async fn insert_existing_id() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let id = Uuid::new_v4();
         let model1 = tag::ActiveModel {
@@ -229,8 +250,7 @@ mod test_insert_tag {
     #[tokio::test]
     async fn insert_existing_tag_name() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let tag_name = Set("test_insert_tag".to_owned());
         let model1 = tag::ActiveModel {
@@ -252,21 +272,40 @@ mod test_insert_tag {
 
         Ok(())
     }
+
+    #[tokio::test]
+    async fn insert_empty_tag_name() -> Result<(), DbErr> {
+        let connection = init_test_db_connection().await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
+
+        let model = tag::ActiveModel {
+            id: Set(Uuid::new_v4()),
+            tag_name: Set("".to_owned()),
+        };
+
+        let insert_result = insert_tag(&connection, model).await;
+
+        assert!(insert_result.is_err_and(|err| err
+            .to_string()
+            .ends_with("CHECK constraint failed: tag_name")));
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod test_get_tags_ids {
     use super::{create_tags, get_tags_ids};
-    use crate::tests::{create_table_for_test_db, init_test_db_connection};
-    use entity::entities::{prelude::Tag, tag};
+    use crate::tests::{execute_migration, init_test_db_connection};
+    use entity::entities::tag;
     use sea_orm::{DbErr, Set};
     use uuid::Uuid;
+    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
     async fn get_ids_of_existing_tags() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let models: Vec<tag::ActiveModel> = (1..=5)
             .map(|x| tag::ActiveModel {
@@ -299,8 +338,7 @@ mod test_get_tags_ids {
     #[tokio::test]
     async fn get_ids_of_non_existing_tags() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let input: Vec<String> = (1..=5).map(|x| format!("test_insert_tag{x}")).collect();
         let expected: Vec<Uuid> = Vec::new();
@@ -314,8 +352,7 @@ mod test_get_tags_ids {
     #[tokio::test]
     async fn get_ids_of_empty_list() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let input: Vec<String> = Vec::new();
         let expected: Vec<Uuid> = Vec::new();
@@ -330,16 +367,16 @@ mod test_get_tags_ids {
 #[cfg(test)]
 mod test_get_tags {
     use super::{create_tags, get_tags};
-    use crate::tests::{create_table_for_test_db, init_test_db_connection};
-    use entity::entities::{prelude::Tag, tag};
+    use crate::tests::{execute_migration, init_test_db_connection};
+    use entity::entities::tag;
     use sea_orm::{DbErr, Set};
     use uuid::Uuid;
+    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
     async fn get_existing_tags() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let models: Vec<tag::ActiveModel> = (1..=5)
             .map(|x| tag::ActiveModel {
@@ -366,8 +403,7 @@ mod test_get_tags {
     #[tokio::test]
     async fn get_empty_list() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let expected: Vec<String> = Vec::new();
         let result = get_tags(&connection).await?;
@@ -381,16 +417,16 @@ mod test_get_tags {
 #[cfg(test)]
 mod test_empty_tag_table {
     use super::{create_tags, empty_tag_table, get_tags};
-    use crate::tests::{create_table_for_test_db, init_test_db_connection};
-    use entity::entities::{prelude::Tag, tag};
+    use crate::tests::{execute_migration, init_test_db_connection};
+    use entity::entities::tag;
     use sea_orm::{DbErr, Set};
     use uuid::Uuid;
+    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
     async fn delete_existing_tags() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let models: Vec<tag::ActiveModel> = (1..=5)
             .map(|x| tag::ActiveModel {
@@ -416,8 +452,7 @@ mod test_empty_tag_table {
     #[tokio::test]
     async fn delete_empty_table() -> Result<(), DbErr> {
         let connection = init_test_db_connection().await?;
-
-        create_table_for_test_db(&connection, Tag).await?;
+        execute_migration(&connection, MIGRATION_NAME).await?;
 
         let expected: Vec<String> = Vec::new();
 

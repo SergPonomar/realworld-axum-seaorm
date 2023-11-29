@@ -596,7 +596,7 @@ dependencies = [
 [[package]]
 name = "cder"
 version = "0.2.0"
-source = "git+https://github.com/SergPonomar/cder?branch=add-uuid-support#9415779a36ba228fad12720de82af93780cf5210"
+source = "git+https://github.com/SergPonomar/cder?branch=add-uuid-support#84fdacec7876dc31d7c9de692e5af1956ed777a0"
 dependencies = [
  "anyhow",
  "once_cell",

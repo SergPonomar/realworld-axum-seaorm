@@ -37,3 +37,10 @@ impl Related<super::article::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl ActiveModel {
+    /// Helper function for check ActiveModel for empty tag name.
+    pub fn is_empty(&self) -> bool {
+        self.tag_name.as_ref().is_empty()
+    }
+}
