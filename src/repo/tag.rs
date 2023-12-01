@@ -29,7 +29,7 @@ pub async fn create_tags(
         .await
 }
 
-/// Insert `tag` for the provided `ActiveModel`. Ignore models with existing tag names.
+/// Insert `tag` for the provided `ActiveModel`. Reject models with existing tag names.
 /// Returns `InsertResult` with last inserted id on success, otherwise
 /// returns an `database error`.
 /// Empty tag name produce error as not allowed on database level.

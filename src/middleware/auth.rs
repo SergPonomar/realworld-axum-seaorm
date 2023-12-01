@@ -95,11 +95,11 @@ pub async fn optional_auth<B: std::fmt::Debug>(
     Ok(response)
 }
 
-pub fn create_token(id: Uuid) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn create_token(id: &Uuid) -> Result<String, jsonwebtoken::errors::Error> {
     let now = chrono::Utc::now();
     let expires_at = now + Duration::seconds(100);
     let exp = expires_at.timestamp() as usize;
-    let claims = Token { exp, id };
+    let claims = Token { exp, id: *id };
     let token_header = Header::default();
 
     let secret = get_secret_key();

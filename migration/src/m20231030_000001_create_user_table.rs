@@ -12,10 +12,17 @@ impl MigrationTrait for Migration {
                     .table(User::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(User::Id).uuid().not_null().primary_key())
-                    .col(ColumnDef::new(User::Email).string().not_null().unique_key())
+                    .col(
+                        ColumnDef::new(User::Email)
+                            .string()
+                            .check(Expr::col(User::Email).ne(""))
+                            .not_null()
+                            .unique_key(),
+                    )
                     .col(
                         ColumnDef::new(User::Username)
                             .string()
+                            .check(Expr::col(User::Username).ne(""))
                             .not_null()
                             .unique_key(),
                     )
