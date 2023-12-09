@@ -82,31 +82,22 @@ pub async fn empty_tag_table(db: &DatabaseConnection) -> Result<DeleteResult, Db
 #[cfg(test)]
 mod test_create_tags {
     use super::{create_tags, insert_tag};
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::tag;
+    use crate::tests::{BldrErr, TestData, TestDataBuilder};
+    use entity::entities::{prelude::Tag, tag};
     use sea_orm::{
-        DbErr, Set,
+        Set,
         TryInsertResult::{Conflicted, Empty, Inserted},
     };
     use std::vec;
     use uuid::Uuid;
-    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
-        let models: Vec<tag::ActiveModel> = (1..=5)
-            .map(|x| tag::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                tag_name: Set(format!("test_insert_tag{x}")),
-            })
-            .collect();
-
-        let last_id = models[models.len() - 1].id.clone().unwrap();
-
-        let insert_result = create_tags(&connection, models).await?;
+    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(5).only_models().build().await?;
+        let last_id = tags.as_ref().unwrap().iter().last().unwrap().id;
+        let actives = TestDataBuilder::activate_models::<Tag, tag::ActiveModel>(&tags);
+        let insert_result = create_tags(&connection, actives).await?;
 
         assert!(match insert_result {
             Inserted(res) => res.last_insert_id == last_id,
@@ -118,27 +109,19 @@ mod test_create_tags {
     }
 
     #[tokio::test]
-    async fn insert_existing_id() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
+    async fn insert_existing_id() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(5).only_models().build().await?;
+        let actives = TestDataBuilder::activate_models::<Tag, tag::ActiveModel>(&tags);
 
-        let models: Vec<tag::ActiveModel> = (1..=5)
-            .map(|x| tag::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                tag_name: Set(format!("test_insert_tag{x}")),
-            })
-            .collect();
-
-        let id = models[1].id.clone();
+        let id = tags.as_ref().unwrap().iter().nth(1).unwrap().id;
         let model = tag::ActiveModel {
-            id,
-            tag_name: Set("test_insert_tag99".to_owned()),
+            id: Set(id),
+            tag_name: Set("tag_name99".to_owned()),
         };
 
         insert_tag(&connection, model).await?;
-
-        let try_insert = create_tags(&connection, models).await;
-
+        let try_insert = create_tags(&connection, actives).await;
         assert!(try_insert.is_err_and(|err| err
             .to_string()
             .ends_with("UNIQUE constraint failed: tag.id")));
@@ -147,26 +130,20 @@ mod test_create_tags {
     }
 
     #[tokio::test]
-    async fn insert_existing_tag_name() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
-        let models: Vec<tag::ActiveModel> = (1..=5)
-            .map(|x| tag::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                tag_name: Set(format!("test_insert_tag{x}")),
-            })
-            .collect();
+    async fn insert_existing_tag_name() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(5).only_models().build().await?;
+        let actives = TestDataBuilder::activate_models::<Tag, tag::ActiveModel>(&tags);
 
         let model = tag::ActiveModel {
             id: Set(Uuid::new_v4()),
-            tag_name: Set("test_insert_tag2".to_owned()),
+            tag_name: Set("tag_name2".to_owned()),
         };
 
-        let last_id = models[models.len() - 1].id.clone().unwrap();
+        let last_id = tags.as_ref().unwrap().iter().last().unwrap().id;
         insert_tag(&connection, model).await?;
 
-        let insert_result = create_tags(&connection, models).await?;
+        let insert_result = create_tags(&connection, actives).await?;
 
         assert!(match insert_result {
             Inserted(res) => res.last_insert_id == last_id,
@@ -178,13 +155,10 @@ mod test_create_tags {
     }
 
     #[tokio::test]
-    async fn insert_empty_collection() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
-        let models = vec![];
-
-        let insert_result = create_tags(&connection, models).await?;
+    async fn insert_empty_collection() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().tags(5).only_models().build().await?;
+        let actives = vec![];
+        let insert_result = create_tags(&connection, actives).await?;
 
         assert!(match insert_result {
             Empty => true,
@@ -198,46 +172,34 @@ mod test_create_tags {
 #[cfg(test)]
 mod test_insert_tag {
     use super::insert_tag;
-    use crate::tests::{execute_migration, init_test_db_connection};
+    use crate::tests::{BldrErr, TestData, TestDataBuilder};
     use entity::entities::tag;
-    use sea_orm::{DbErr, Set};
+    use sea_orm::Set;
     use uuid::Uuid;
-    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
+    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(1).only_models().build().await?;
+        let tag = tags.unwrap().into_iter().next().unwrap();
+        let id = (&tag.id).clone();
 
-        let id = Uuid::new_v4();
-        let model = tag::ActiveModel {
-            id: Set(id),
-            tag_name: Set("test_insert_tag1".to_owned()),
-        };
-
-        let insert_result = insert_tag(&connection, model).await?;
+        let insert_result = insert_tag(&connection, tag.into()).await?;
         assert_eq!(insert_result.last_insert_id, id);
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn insert_existing_id() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
-        let id = Uuid::new_v4();
-        let model1 = tag::ActiveModel {
-            id: Set(id),
-            tag_name: Set("test_insert_tag1".to_owned()),
-        };
+    async fn insert_existing_id() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(1).build().await?;
+        let id = tags.unwrap()[0].id;
 
         let model2 = tag::ActiveModel {
             id: Set(id),
             tag_name: Set("test_insert_tag2".to_owned()),
         };
 
-        insert_tag(&connection, model1).await?;
         let insert_result = insert_tag(&connection, model2).await;
 
         assert!(insert_result.is_err_and(|err| err
@@ -248,22 +210,15 @@ mod test_insert_tag {
     }
 
     #[tokio::test]
-    async fn insert_existing_tag_name() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
-        let tag_name = Set("test_insert_tag".to_owned());
-        let model1 = tag::ActiveModel {
-            id: Set(Uuid::new_v4()),
-            tag_name: tag_name.clone(),
-        };
+    async fn insert_existing_tag_name() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(1).build().await?;
+        let tag_name = &tags.unwrap()[0].tag_name;
 
         let model2 = tag::ActiveModel {
             id: Set(Uuid::new_v4()),
-            tag_name,
+            tag_name: Set(tag_name.into()),
         };
 
-        insert_tag(&connection, model1).await?;
         let insert_result = insert_tag(&connection, model2).await;
 
         assert!(insert_result.is_err_and(|err| err
@@ -274,10 +229,8 @@ mod test_insert_tag {
     }
 
     #[tokio::test]
-    async fn insert_empty_tag_name() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
+    async fn insert_empty_tag_name() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
         let model = tag::ActiveModel {
             id: Set(Uuid::new_v4()),
             tag_name: Set("".to_owned()),
@@ -295,38 +248,33 @@ mod test_insert_tag {
 
 #[cfg(test)]
 mod test_get_tags_ids {
-    use super::{create_tags, get_tags_ids};
-    use crate::tests::{execute_migration, init_test_db_connection};
+    use super::{create_tags, get_tags_ids, Tag};
+    use crate::tests::{BldrErr, TestData, TestDataBuilder};
     use entity::entities::tag;
-    use sea_orm::{DbErr, Set};
     use uuid::Uuid;
-    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
 
     #[tokio::test]
-    async fn get_ids_of_existing_tags() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
+    async fn get_ids_of_existing_tags() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(5).build().await?;
 
-        let models: Vec<tag::ActiveModel> = (1..=5)
-            .map(|x| tag::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                tag_name: Set(format!("test_insert_tag{x}")),
-            })
+        let input: Vec<String> = tags
+            .as_ref()
+            .unwrap()
+            .iter()
+            .cloned()
+            .map(|model| model.tag_name)
             .collect();
 
-        let input: Vec<String> = models
-            .clone()
-            .into_iter()
-            .map(|model| model.tag_name.unwrap())
+        let expected: Vec<Uuid> = tags
+            .as_ref()
+            .unwrap()
+            .iter()
+            .cloned()
+            .map(|model| model.id)
             .collect();
 
-        let expected: Vec<Uuid> = models
-            .clone()
-            .into_iter()
-            .map(|model| model.id.unwrap())
-            .collect();
-
-        create_tags(&connection, models).await?;
+        let actives = TestDataBuilder::activate_models::<Tag, tag::ActiveModel>(&tags);
+        create_tags(&connection, actives).await?;
 
         let result = get_tags_ids(&connection, input).await?;
 
@@ -336,11 +284,15 @@ mod test_get_tags_ids {
     }
 
     #[tokio::test]
-    async fn get_ids_of_non_existing_tags() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
+    async fn get_ids_of_non_existing_tags() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(5).only_models().build().await?;
+        let input: Vec<String> = tags
+            .unwrap()
+            .into_iter()
+            .map(|model| model.tag_name)
+            .collect();
 
-        let input: Vec<String> = (1..=5).map(|x| format!("test_insert_tag{x}")).collect();
         let expected: Vec<Uuid> = Vec::new();
         let result = get_tags_ids(&connection, input).await?;
 
@@ -350,10 +302,8 @@ mod test_get_tags_ids {
     }
 
     #[tokio::test]
-    async fn get_ids_of_empty_list() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
+    async fn get_ids_of_empty_list() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
         let input: Vec<String> = Vec::new();
         let expected: Vec<Uuid> = Vec::new();
         let result = get_tags_ids(&connection, input).await?;
@@ -366,45 +316,27 @@ mod test_get_tags_ids {
 
 #[cfg(test)]
 mod test_get_tags {
-    use super::{create_tags, get_tags};
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::tag;
-    use sea_orm::{DbErr, Set};
-    use uuid::Uuid;
-    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
+    use super::get_tags;
+    use crate::tests::{BldrErr, TestData, TestDataBuilder};
 
     #[tokio::test]
-    async fn get_existing_tags() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
-        let models: Vec<tag::ActiveModel> = (1..=5)
-            .map(|x| tag::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                tag_name: Set(format!("test_insert_tag{x}")),
-            })
-            .collect();
-
-        let expected: Vec<String> = models
-            .clone()
+    async fn get_existing_tags() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(5).build().await?;
+        let expected: Vec<String> = tags
+            .unwrap()
             .into_iter()
-            .map(|model| model.tag_name.unwrap())
+            .map(|model| model.tag_name)
             .collect();
-
-        create_tags(&connection, models).await?;
 
         let result = get_tags(&connection).await?;
-
         assert_eq!(result, expected);
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_empty_list() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
+    async fn get_empty_list() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
         let expected: Vec<String> = Vec::new();
         let result = get_tags(&connection).await?;
 
@@ -416,51 +348,30 @@ mod test_get_tags {
 
 #[cfg(test)]
 mod test_empty_tag_table {
-    use super::{create_tags, empty_tag_table, get_tags};
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::tag;
-    use sea_orm::{DbErr, Set};
-    use uuid::Uuid;
-    const MIGRATION_NAME: &str = "m20231030_000004_create_tag_table";
+    use super::{empty_tag_table, get_tags};
+    use crate::tests::{BldrErr, TestData, TestDataBuilder};
 
     #[tokio::test]
-    async fn delete_existing_tags() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
-        let models: Vec<tag::ActiveModel> = (1..=5)
-            .map(|x| tag::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                tag_name: Set(format!("test_insert_tag{x}")),
-            })
-            .collect();
-
-        create_tags(&connection, models.clone()).await?;
-
+    async fn delete_existing_tags() -> Result<(), BldrErr> {
+        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(5).build().await?;
         let expected: Vec<String> = Vec::new();
 
         let delete_result = empty_tag_table(&connection).await?;
-        assert_eq!(delete_result.rows_affected, models.len() as u64);
-
         let result = get_tags(&connection).await?;
-
+        assert_eq!(delete_result.rows_affected, tags.unwrap().len() as u64);
         assert_eq!(result, expected);
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn delete_empty_table() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, MIGRATION_NAME).await?;
-
+    async fn delete_empty_table() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
         let expected: Vec<String> = Vec::new();
 
         let delete_result = empty_tag_table(&connection).await?;
-        assert_eq!(delete_result.rows_affected, expected.len() as u64);
-
         let result = get_tags(&connection).await?;
-
+        assert_eq!(delete_result.rows_affected, expected.len() as u64);
         assert_eq!(result, expected);
 
         Ok(())

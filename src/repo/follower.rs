@@ -39,7 +39,10 @@ pub async fn empty_follower_table(db: &DatabaseConnection) -> Result<DeleteResul
 mod test_create_follower {
     use super::create_follower;
     use crate::repo::user::create_user;
+    use crate::tests::BldrErr;
+    use crate::tests::TestData;
     use crate::tests::{execute_migration, init_test_db_connection};
+    use crate::tests::{RelUserFollower, TestDataBuilder};
     use entity::entities::{follower, user};
     use sea_orm::{DbErr, Set};
     use uuid::Uuid;
@@ -49,33 +52,15 @@ mod test_create_follower {
     const FOLLOWER_TABLE_MIGRATION: &str = "m20231101_000006_create_follower_table";
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-        execute_migration(&connection, FOLLOWER_TABLE_MIGRATION).await?;
+    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) = TestDataBuilder::new()
+            .users(2)
+            .followers(RelUserFollower(vec![(1, 2)]))
+            .build()
+            .await?;
 
-        let user_id = Uuid::new_v4();
-        let follower_id = Uuid::new_v4();
-
-        let user1 = user::ActiveModel {
-            id: Set(user_id),
-            email: Set("email1".to_owned()),
-            username: Set("username1".to_owned()),
-            password: Set("password_hash".to_owned()),
-            ..Default::default()
-        };
-
-        let user2 = user::ActiveModel {
-            id: Set(follower_id),
-            email: Set("email2".to_owned()),
-            username: Set("username2".to_owned()),
-            password: Set("password_hash".to_owned()),
-            ..Default::default()
-        };
-
-        create_user(&connection, user1).await?;
-        create_user(&connection, user2).await?;
+        let user_id = users.as_ref().unwrap()[1].id;
+        let follower_id = users.as_ref().unwrap()[0].id;
 
         let model = follower::ActiveModel {
             user_id: Set(user_id),
@@ -90,23 +75,14 @@ mod test_create_follower {
     }
 
     #[tokio::test]
-    async fn insert_not_existing_follower() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-        execute_migration(&connection, FOLLOWER_TABLE_MIGRATION).await?;
+    async fn insert_not_existing_follower() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) = TestDataBuilder::new()
+            .users(2)
+            .followers(RelUserFollower(vec![(1, 2)]))
+            .build()
+            .await?;
 
-        let user_id = Uuid::new_v4();
-
-        let user1 = user::ActiveModel {
-            id: Set(user_id),
-            email: Set("email1".to_owned()),
-            username: Set("username1".to_owned()),
-            password: Set("password_hash".to_owned()),
-            ..Default::default()
-        };
-
-        create_user(&connection, user1).await?;
+        let user_id = users.as_ref().unwrap()[0].id;
 
         let model = follower::ActiveModel {
             user_id: Set(user_id),

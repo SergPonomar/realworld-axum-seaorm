@@ -1,9 +1,13 @@
 use crate::middleware::auth::create_token;
-use entity::entities::{follower, prelude::User, user};
+use entity::entities::{
+    follower,
+    prelude::{Follower, User},
+    user,
+};
 use migration::SimpleExpr;
 use sea_orm::{
     prelude::Uuid, query::*, ColumnTrait, DatabaseConnection, DbErr, DeleteResult, EntityTrait,
-    FromQueryResult, InsertResult, QueryFilter, RelationTrait,
+    FromQueryResult, InsertResult, QueryFilter,
 };
 use serde::Serialize;
 
@@ -99,8 +103,8 @@ pub async fn get_profile_by_username(
 pub fn author_followed_by_current_user(user_id: Option<Uuid>) -> SimpleExpr {
     match user_id {
         Some(id) => user::Column::Id.in_subquery(
-            User::find()
-                .join(JoinType::InnerJoin, follower::Relation::User1.def().rev())
+            // find users followed by current user
+            Follower::find()
                 .select_only()
                 .column(follower::Column::UserId)
                 .filter(follower::Column::FollowerId.eq(id))
@@ -130,10 +134,10 @@ pub struct UserWithToken {
 
 #[derive(Clone, Debug, PartialEq, FromQueryResult, Eq, Serialize)]
 pub struct Profile {
-    username: String,
-    bio: Option<String>,
-    image: Option<String>,
-    following: bool,
+    pub username: String,
+    pub bio: Option<String>,
+    pub image: Option<String>,
+    pub following: bool,
 }
 
 impl FromQueryResult for UserWithToken {

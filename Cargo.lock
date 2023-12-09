@@ -595,8 +595,8 @@ dependencies = [
 
 [[package]]
 name = "cder"
-version = "0.2.0"
-source = "git+https://github.com/SergPonomar/cder?branch=add-uuid-support#84fdacec7876dc31d7c9de692e5af1956ed777a0"
+version = "0.2.1"
+source = "git+https://github.com/estie-inc/cder#597673dc87f5cfae84846d25257ce412b31dce6f"
 dependencies = [
  "anyhow",
  "once_cell",
@@ -830,6 +830,7 @@ version = "0.1.0"
 dependencies = [
  "sea-orm",
  "serde",
+ "uuid",
 ]
 
 [[package]]
@@ -993,6 +994,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures-macro"
+version = "0.3.29"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53b153fd91e4b0147f4aced87be237c98248656bb01050b96bf3ee89220a8ddb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.38",
+]
+
+[[package]]
 name = "futures-sink"
 version = "0.3.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1013,6 +1025,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-io",
+ "futures-macro",
  "futures-sink",
  "futures-task",
  "memchr",
@@ -1919,6 +1932,7 @@ dependencies = [
  "chrono",
  "dotenvy",
  "entity",
+ "futures",
  "jsonwebtoken",
  "migration",
  "rand_core",

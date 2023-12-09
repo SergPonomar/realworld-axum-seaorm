@@ -27,9 +27,11 @@ axum-extra = "0.8.0"
 serde_json = "1.0.108"
 tower = { version = "0.4.13", features = ["util"] }
 uuid = { version = "1.5.0", features = ["v4"] }
-# cder = "0.2.0"
+# cder = "0.2.1"
 # cder = { path = "../cder" }
-cder = { git = "https://github.com/SergPonomar/cder", branch = "add-uuid-support" }
+# cder = { git = "https://github.com/SergPonomar/cder", branch = "add-uuid-support" }
+cder = { git = "https://github.com/estie-inc/cder" }
+futures = "0.3"
 
 [dev-dependencies]
 serial_test = "*"

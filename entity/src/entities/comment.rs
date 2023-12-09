@@ -4,7 +4,9 @@ use sea_orm::entity::prelude::*;
 use serde::Deserialize;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Deserialize)]
-#[sea_orm(schema_name = "realworld_schema", table_name = "comment")]
+// TODO Add Postgres feature only
+// #[sea_orm(schema_name = "realworld_schema", table_name = "comment")]
+#[sea_orm(table_name = "comment")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     #[serde(skip_deserializing)]
