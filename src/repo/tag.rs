@@ -82,7 +82,7 @@ pub async fn empty_tag_table(db: &DatabaseConnection) -> Result<DeleteResult, Db
 #[cfg(test)]
 mod test_create_tags {
     use super::{create_tags, insert_tag};
-    use crate::tests::{BldrErr, TestData, TestDataBuilder};
+    use crate::tests::{BldrErr, Operation::Create, TestData, TestDataBuilder};
     use entity::entities::{prelude::Tag, tag};
     use sea_orm::{
         Set,
@@ -94,7 +94,7 @@ mod test_create_tags {
     #[tokio::test]
     async fn insert_not_exist_data() -> Result<(), BldrErr> {
         let (connection, TestData { tags, .. }) =
-            TestDataBuilder::new().tags(5).only_models().build().await?;
+            TestDataBuilder::new().tags(Create(5)).build().await?;
         let last_id = tags.as_ref().unwrap().iter().last().unwrap().id;
         let actives = TestDataBuilder::activate_models::<Tag, tag::ActiveModel>(&tags);
         let insert_result = create_tags(&connection, actives).await?;
@@ -111,7 +111,7 @@ mod test_create_tags {
     #[tokio::test]
     async fn insert_existing_id() -> Result<(), BldrErr> {
         let (connection, TestData { tags, .. }) =
-            TestDataBuilder::new().tags(5).only_models().build().await?;
+            TestDataBuilder::new().tags(Create(5)).build().await?;
         let actives = TestDataBuilder::activate_models::<Tag, tag::ActiveModel>(&tags);
 
         let id = tags.as_ref().unwrap().iter().nth(1).unwrap().id;
@@ -132,7 +132,7 @@ mod test_create_tags {
     #[tokio::test]
     async fn insert_existing_tag_name() -> Result<(), BldrErr> {
         let (connection, TestData { tags, .. }) =
-            TestDataBuilder::new().tags(5).only_models().build().await?;
+            TestDataBuilder::new().tags(Create(5)).build().await?;
         let actives = TestDataBuilder::activate_models::<Tag, tag::ActiveModel>(&tags);
 
         let model = tag::ActiveModel {
@@ -156,7 +156,7 @@ mod test_create_tags {
 
     #[tokio::test]
     async fn insert_empty_collection() -> Result<(), BldrErr> {
-        let (connection, _) = TestDataBuilder::new().tags(5).only_models().build().await?;
+        let (connection, _) = TestDataBuilder::new().tags(Create(5)).build().await?;
         let actives = vec![];
         let insert_result = create_tags(&connection, actives).await?;
 
@@ -172,7 +172,11 @@ mod test_create_tags {
 #[cfg(test)]
 mod test_insert_tag {
     use super::insert_tag;
-    use crate::tests::{BldrErr, TestData, TestDataBuilder};
+    use crate::tests::{
+        BldrErr,
+        Operation::{Create, Insert},
+        TestData, TestDataBuilder,
+    };
     use entity::entities::tag;
     use sea_orm::Set;
     use uuid::Uuid;
@@ -180,7 +184,7 @@ mod test_insert_tag {
     #[tokio::test]
     async fn insert_not_exist_data() -> Result<(), BldrErr> {
         let (connection, TestData { tags, .. }) =
-            TestDataBuilder::new().tags(1).only_models().build().await?;
+            TestDataBuilder::new().tags(Create(1)).build().await?;
         let tag = tags.unwrap().into_iter().next().unwrap();
         let id = (&tag.id).clone();
 
@@ -192,7 +196,8 @@ mod test_insert_tag {
 
     #[tokio::test]
     async fn insert_existing_id() -> Result<(), BldrErr> {
-        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(1).build().await?;
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(Insert(1)).build().await?;
         let id = tags.unwrap()[0].id;
 
         let model2 = tag::ActiveModel {
@@ -211,7 +216,8 @@ mod test_insert_tag {
 
     #[tokio::test]
     async fn insert_existing_tag_name() -> Result<(), BldrErr> {
-        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(1).build().await?;
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(Insert(1)).build().await?;
         let tag_name = &tags.unwrap()[0].tag_name;
 
         let model2 = tag::ActiveModel {
@@ -230,7 +236,7 @@ mod test_insert_tag {
 
     #[tokio::test]
     async fn insert_empty_tag_name() -> Result<(), BldrErr> {
-        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
+        let (connection, _) = TestDataBuilder::new().tags(Create(1)).build().await?;
         let model = tag::ActiveModel {
             id: Set(Uuid::new_v4()),
             tag_name: Set("".to_owned()),
@@ -249,13 +255,18 @@ mod test_insert_tag {
 #[cfg(test)]
 mod test_get_tags_ids {
     use super::{create_tags, get_tags_ids, Tag};
-    use crate::tests::{BldrErr, TestData, TestDataBuilder};
+    use crate::tests::{
+        BldrErr,
+        Operation::{Create, Insert},
+        TestData, TestDataBuilder,
+    };
     use entity::entities::tag;
     use uuid::Uuid;
 
     #[tokio::test]
     async fn get_ids_of_existing_tags() -> Result<(), BldrErr> {
-        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(5).build().await?;
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(Insert(5)).build().await?;
 
         let input: Vec<String> = tags
             .as_ref()
@@ -286,7 +297,7 @@ mod test_get_tags_ids {
     #[tokio::test]
     async fn get_ids_of_non_existing_tags() -> Result<(), BldrErr> {
         let (connection, TestData { tags, .. }) =
-            TestDataBuilder::new().tags(5).only_models().build().await?;
+            TestDataBuilder::new().tags(Create(5)).build().await?;
         let input: Vec<String> = tags
             .unwrap()
             .into_iter()
@@ -303,7 +314,7 @@ mod test_get_tags_ids {
 
     #[tokio::test]
     async fn get_ids_of_empty_list() -> Result<(), BldrErr> {
-        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
+        let (connection, _) = TestDataBuilder::new().tags(Create(1)).build().await?;
         let input: Vec<String> = Vec::new();
         let expected: Vec<Uuid> = Vec::new();
         let result = get_tags_ids(&connection, input).await?;
@@ -317,11 +328,16 @@ mod test_get_tags_ids {
 #[cfg(test)]
 mod test_get_tags {
     use super::get_tags;
-    use crate::tests::{BldrErr, TestData, TestDataBuilder};
+    use crate::tests::{
+        BldrErr,
+        Operation::{Create, Insert},
+        TestData, TestDataBuilder,
+    };
 
     #[tokio::test]
     async fn get_existing_tags() -> Result<(), BldrErr> {
-        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(5).build().await?;
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(Insert(5)).build().await?;
         let expected: Vec<String> = tags
             .unwrap()
             .into_iter()
@@ -336,7 +352,7 @@ mod test_get_tags {
 
     #[tokio::test]
     async fn get_empty_list() -> Result<(), BldrErr> {
-        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
+        let (connection, _) = TestDataBuilder::new().tags(Create(1)).build().await?;
         let expected: Vec<String> = Vec::new();
         let result = get_tags(&connection).await?;
 
@@ -349,11 +365,16 @@ mod test_get_tags {
 #[cfg(test)]
 mod test_empty_tag_table {
     use super::{empty_tag_table, get_tags};
-    use crate::tests::{BldrErr, TestData, TestDataBuilder};
+    use crate::tests::{
+        BldrErr,
+        Operation::{Create, Insert},
+        TestData, TestDataBuilder,
+    };
 
     #[tokio::test]
     async fn delete_existing_tags() -> Result<(), BldrErr> {
-        let (connection, TestData { tags, .. }) = TestDataBuilder::new().tags(5).build().await?;
+        let (connection, TestData { tags, .. }) =
+            TestDataBuilder::new().tags(Insert(5)).build().await?;
         let expected: Vec<String> = Vec::new();
 
         let delete_result = empty_tag_table(&connection).await?;
@@ -366,7 +387,7 @@ mod test_empty_tag_table {
 
     #[tokio::test]
     async fn delete_empty_table() -> Result<(), BldrErr> {
-        let (connection, _) = TestDataBuilder::new().tags(1).only_models().build().await?;
+        let (connection, _) = TestDataBuilder::new().tags(Create(1)).build().await?;
         let expected: Vec<String> = Vec::new();
 
         let delete_result = empty_tag_table(&connection).await?;

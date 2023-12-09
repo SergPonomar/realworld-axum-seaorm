@@ -6,7 +6,7 @@ use entity::entities::{
 };
 use migration::{Migrator, MigratorTrait, SchemaManager};
 use sea_orm::{ActiveModelTrait, Database, DatabaseConnection, DbErr, EntityTrait};
-use std::{convert::From, error::Error, fmt};
+use std::{convert::From, error::Error, fmt, matches, unreachable, vec};
 use uuid::Uuid;
 
 pub async fn init_test_db_connection() -> Result<DatabaseConnection, DbErr> {
@@ -47,22 +47,29 @@ pub async fn execute_migration(
 /// struct for creating test data
 #[derive(Default, Debug, PartialEq)]
 pub struct TestDataBuilder {
-    users: Option<Vec<user::Model>>,
-    articles: Option<Vec<article::Model>>,
-    comments: Option<Vec<comment::Model>>,
-    tags: Option<Vec<tag::Model>>,
-    article_tags: Option<Vec<article_tag::Model>>,
-    followers: Option<Vec<follower::Model>>,
-    favorited_articles: Option<Vec<favorited_article::Model>>,
+    users: Option<Operation<Vec<user::Model>>>,
+    articles: Option<Operation<Vec<article::Model>>>,
+    comments: Option<Operation<Vec<comment::Model>>>,
+    tags: Option<Operation<Vec<tag::Model>>>,
+    article_tags: Option<Operation<Vec<article_tag::Model>>>,
+    followers: Option<Operation<Vec<follower::Model>>>,
+    favorited_articles: Option<Operation<Vec<favorited_article::Model>>>,
     error: Option<BldrErr>,
-    only_models: bool,
 }
 
-pub struct RelUser(Vec<usize>);
-pub struct RelAuthorArticle(Vec<(usize, usize)>);
-pub struct RelArticleTag(Vec<(usize, usize)>);
-pub struct RelUserFollower(pub Vec<(usize, usize)>);
-pub struct RelArticleUser(Vec<(usize, usize)>);
+pub type Qty = usize;
+pub type RelUser = Vec<usize>;
+pub type RelAuthorArticle = Vec<(usize, usize)>;
+pub type RelArticleTag = Vec<(usize, usize)>;
+pub type RelUserFollower = Vec<(usize, usize)>;
+pub type RelArticleUser = Vec<(usize, usize)>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Operation<T> {
+    Insert(T),
+    Create(T),
+    Migration,
+}
 
 /// error reterned by TestDataBuilder
 #[derive(Debug, PartialEq)]
@@ -120,7 +127,6 @@ impl Error for BldrErr {
 
 impl TestDataBuilder {
     pub fn new() -> Self {
-        // UserOperation(Operation::Insert(RelUser(vec![3])));
         Self::default()
     }
 
@@ -131,251 +137,465 @@ impl TestDataBuilder {
         self
     }
 
-    pub fn users(mut self, qty: usize) -> Self {
-        if qty == 0 {
+    pub fn users(mut self, operation: Operation<Qty>) -> Self {
+        let gen_users = |qty| {
+            (1..=qty)
+                .map(|x| user::Model {
+                    id: Uuid::new_v4(),
+                    email: format!("email{x}"),
+                    username: format!("username{x}"),
+                    bio: Some("bio".to_owned()),
+                    image: Some("image".to_owned()),
+                    password: "password".to_owned(),
+                })
+                .collect()
+        };
+
+        if let Operation::Insert(0) | Operation::Create(0) = operation {
             return self.apply_error(BldrErr::ZeroQty);
         }
-        let users = (1..=qty)
-            .map(|x| user::Model {
-                id: Uuid::new_v4(),
-                email: format!("email{x}"),
-                username: format!("username{x}"),
-                bio: Some("bio".to_owned()),
-                image: Some("image".to_owned()),
-                password: "password".to_owned(),
-            })
-            .collect();
+
+        let users = match operation {
+            Operation::Insert(qty) => Operation::Insert(gen_users(qty)),
+            Operation::Create(qty) => Operation::Create(gen_users(qty)),
+            Operation::Migration => Operation::Migration,
+        };
+
         self.users = Some(users);
         self
     }
 
-    pub fn articles(mut self, relations: RelUser) -> Self {
-        let values = relations.0;
-        if values.is_empty() {
+    pub fn articles(mut self, operation: Operation<RelUser>) -> Self {
+        if matches!(&operation, Operation::Insert(rels) | Operation::Create(rels) if rels.is_empty())
+        {
             return self.apply_error(BldrErr::EmptyRel);
         }
-        if self.users.is_none() {
-            return self.apply_error(BldrErr::WrongOrder(
-                "users".to_owned(),
-                "articles".to_owned(),
-            ));
-        }
-        let users_len = self.users.as_ref().unwrap().len();
-        if !values.iter().all(|&x| x >= 1 && x <= users_len) {
-            return self.apply_error(BldrErr::OutOfRange("user".to_owned(), users_len));
-        }
-        let articles = values
-            .iter()
-            .enumerate()
-            .map(|(idx, val)| {
-                let current_time = (Local::now() + Duration::seconds(idx as i64 + 1)).naive_local();
-                article::Model {
-                    id: Uuid::new_v4(),
-                    slug: format!("title{idx}"),
-                    title: format!("title{idx}"),
-                    description: "description".to_owned(),
-                    body: "body".to_owned(),
-                    author_id: self.users.as_ref().unwrap()[*val as usize - 1].id,
-                    created_at: Some(current_time),
-                    updated_at: Some(current_time),
+
+        match (&operation, &self.users) {
+            (Operation::Insert(rels), Some(Operation::Insert(mdls)))
+            | (Operation::Create(rels), Some(Operation::Insert(mdls)))
+            | (Operation::Create(rels), Some(Operation::Create(mdls))) => {
+                let users_len = mdls.len();
+                if !rels.iter().all(|&x| x >= 1 && x <= users_len) {
+                    return self.apply_error(BldrErr::OutOfRange("user".to_owned(), users_len));
                 }
-            })
-            .collect();
+            }
+            (Operation::Migration, Some(_)) => (),
+            _ => {
+                return self.apply_error(BldrErr::WrongOrder(
+                    "users".to_owned(),
+                    "articles".to_owned(),
+                ));
+            }
+        }
+
+        let gen_articles = |relations: RelUser| {
+            relations
+                .iter()
+                .enumerate()
+                .map(|(idx, val)| {
+                    let current_time =
+                        (Local::now() + Duration::seconds(idx as i64 + 1)).naive_local();
+
+                    match self.users.as_ref().unwrap() {
+                        Operation::Insert(users) | Operation::Create(users) => article::Model {
+                            id: Uuid::new_v4(),
+                            slug: format!("title{idx}"),
+                            title: format!("title{idx}"),
+                            description: "description".to_owned(),
+                            body: "body".to_owned(),
+                            author_id: users[*val as usize - 1].id,
+                            created_at: Some(current_time),
+                            updated_at: Some(current_time),
+                        },
+                        _ => unreachable!(),
+                    }
+                })
+                .collect()
+        };
+
+        let articles = match operation {
+            Operation::Insert(rels) => Operation::Insert(gen_articles(rels)),
+            Operation::Create(rels) => Operation::Create(gen_articles(rels)),
+            Operation::Migration => Operation::Migration,
+        };
+
         self.articles = Some(articles);
         self
     }
 
-    pub fn comments(mut self, relations: RelAuthorArticle) -> Self {
-        let values = relations.0;
-        if values.is_empty() {
+    pub fn comments(mut self, operation: Operation<RelAuthorArticle>) -> Self {
+        if matches!(&operation, Operation::Insert(rels) | Operation::Create(rels) if rels.is_empty())
+        {
             return self.apply_error(BldrErr::EmptyRel);
         }
-        if self.articles.is_none() {
-            return self.apply_error(BldrErr::WrongOrder(
-                "articles".to_owned(),
-                "comments".to_owned(),
-            ));
-        }
-        let users_len = self.users.as_ref().unwrap().len();
-        if !values
-            .iter()
-            .all(|&(author, _)| author >= 1 && author <= users_len)
-        {
-            return self.apply_error(BldrErr::OutOfRange("author".to_owned(), users_len));
-        }
-        let articles_len = self.articles.as_ref().unwrap().len();
-        if !values
-            .iter()
-            .all(|&(_, article)| article >= 1 && article <= articles_len)
-        {
-            return self.apply_error(BldrErr::OutOfRange("article".to_owned(), articles_len));
+
+        match (&operation, &self.users, &self.articles) {
+            (
+                Operation::Insert(rels),
+                Some(Operation::Insert(usrs)),
+                Some(Operation::Insert(artcls)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Create(usrs)),
+                Some(Operation::Create(artcls)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Insert(usrs)),
+                Some(Operation::Create(artcls)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Create(usrs)),
+                Some(Operation::Insert(artcls)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Insert(usrs)),
+                Some(Operation::Insert(artcls)),
+            ) => {
+                let users_len = usrs.len();
+                if !rels
+                    .iter()
+                    .all(|&(author, _)| author >= 1 && author <= users_len)
+                {
+                    return self.apply_error(BldrErr::OutOfRange("author".to_owned(), users_len));
+                }
+                let articles_len = artcls.len();
+                if !rels
+                    .iter()
+                    .all(|&(_, article)| article >= 1 && article <= articles_len)
+                {
+                    return self
+                        .apply_error(BldrErr::OutOfRange("article".to_owned(), articles_len));
+                }
+            }
+            (Operation::Migration, Some(_), Some(_)) => (),
+            _ => {
+                return self.apply_error(BldrErr::WrongOrder(
+                    "articles".to_owned(),
+                    "comments".to_owned(),
+                ));
+            }
         }
 
-        let comments = values
-            .iter()
-            .enumerate()
-            .map(|(idx, (author, article))| {
-                let current_time = (Local::now() + Duration::seconds(idx as i64 + 1)).naive_local();
-                comment::Model {
-                    id: Uuid::new_v4(),
-                    body: format!("comment{idx}"),
-                    author_id: self.users.as_ref().unwrap()[*author as usize - 1].id,
-                    article_id: self.articles.as_ref().unwrap()[*article as usize - 1].id,
-                    created_at: Some(current_time),
-                    updated_at: Some(current_time),
-                }
-            })
-            .collect();
+        let gen_comments = |relations: RelAuthorArticle| {
+            relations
+                .iter()
+                .enumerate()
+                .map(|(idx, (author, article))| {
+                    let current_time =
+                        (Local::now() + Duration::seconds(idx as i64 + 1)).naive_local();
+
+                    match (
+                        self.users.as_ref().unwrap(),
+                        self.articles.as_ref().unwrap(),
+                    ) {
+                        (Operation::Insert(usrs), Operation::Insert(artcls))
+                        | (Operation::Insert(usrs), Operation::Create(artcls))
+                        | (Operation::Create(usrs), Operation::Create(artcls))
+                        | (Operation::Create(usrs), Operation::Insert(artcls)) => comment::Model {
+                            id: Uuid::new_v4(),
+                            body: format!("comment{idx}"),
+                            author_id: usrs[*author as usize - 1].id,
+                            article_id: artcls[*article as usize - 1].id,
+                            created_at: Some(current_time),
+                            updated_at: Some(current_time),
+                        },
+                        _ => unreachable!(),
+                    }
+                })
+                .collect()
+        };
+
+        let comments = match operation {
+            Operation::Insert(rels) => Operation::Insert(gen_comments(rels)),
+            Operation::Create(rels) => Operation::Create(gen_comments(rels)),
+            Operation::Migration => Operation::Migration,
+        };
+
         self.comments = Some(comments);
         self
     }
 
-    pub fn tags(mut self, qty: usize) -> Self {
-        if qty == 0 {
+    pub fn tags(mut self, operation: Operation<Qty>) -> Self {
+        let gen_tags = |qty| {
+            (1..=qty)
+                .map(|x| tag::Model {
+                    id: Uuid::new_v4(),
+                    tag_name: format!("tag_name{x}"),
+                })
+                .collect()
+        };
+
+        if let Operation::Insert(0) | Operation::Create(0) = operation {
             return self.apply_error(BldrErr::ZeroQty);
         }
-        let tags = (1..=qty)
-            .map(|x| tag::Model {
-                id: Uuid::new_v4(),
-                tag_name: format!("tag_name{x}"),
-            })
-            .collect();
+
+        let tags = match operation {
+            Operation::Insert(qty) => Operation::Insert(gen_tags(qty)),
+            Operation::Create(qty) => Operation::Create(gen_tags(qty)),
+            Operation::Migration => Operation::Migration,
+        };
+
         self.tags = Some(tags);
         self
     }
 
-    pub fn article_tags(mut self, relations: RelArticleTag) -> Self {
-        let values = relations.0;
-        if values.is_empty() {
+    pub fn article_tags(mut self, operation: Operation<RelArticleTag>) -> Self {
+        if matches!(&operation, Operation::Insert(rels) | Operation::Create(rels) if rels.is_empty())
+        {
             return self.apply_error(BldrErr::EmptyRel);
         }
-        if self.articles.is_none() {
-            return self.apply_error(BldrErr::WrongOrder(
-                "articles".to_owned(),
-                "article_tags".to_owned(),
-            ));
-        }
-        if self.tags.is_none() {
-            return self.apply_error(BldrErr::WrongOrder(
-                "tags".to_owned(),
-                "article_tags".to_owned(),
-            ));
-        }
-        let articles_len = self.articles.as_ref().unwrap().len();
-        if !values
-            .iter()
-            .all(|&(article, _)| article >= 1 && article <= articles_len)
-        {
-            return self.apply_error(BldrErr::OutOfRange("article".to_owned(), articles_len));
-        }
-        let tags_len = self.tags.as_ref().unwrap().len();
-        if !values.iter().all(|&(_, tag)| tag >= 1 && tag <= tags_len) {
-            return self.apply_error(BldrErr::OutOfRange("tag".to_owned(), tags_len));
+
+        match (&operation, &self.articles, &self.tags) {
+            (
+                Operation::Insert(rels),
+                Some(Operation::Insert(artcls)),
+                Some(Operation::Insert(tgs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Create(artcls)),
+                Some(Operation::Create(tgs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Insert(artcls)),
+                Some(Operation::Create(tgs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Create(artcls)),
+                Some(Operation::Insert(tgs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Insert(artcls)),
+                Some(Operation::Insert(tgs)),
+            ) => {
+                let articles_len = artcls.len();
+                if !rels
+                    .iter()
+                    .all(|&(article, _)| article >= 1 && article <= articles_len)
+                {
+                    return self
+                        .apply_error(BldrErr::OutOfRange("article".to_owned(), articles_len));
+                }
+                let tags_len = tgs.len();
+                if !rels.iter().all(|&(_, tag)| tag >= 1 && tag <= tags_len) {
+                    return self.apply_error(BldrErr::OutOfRange("tag".to_owned(), tags_len));
+                }
+            }
+            (Operation::Migration, Some(_), Some(_)) => (),
+            (_, _, None) => {
+                return self.apply_error(BldrErr::WrongOrder(
+                    "tags".to_owned(),
+                    "article_tags".to_owned(),
+                ));
+            }
+            _ => {
+                return self.apply_error(BldrErr::WrongOrder(
+                    "articles".to_owned(),
+                    "article_tags".to_owned(),
+                ));
+            }
         }
 
-        let article_tags = values
-            .iter()
-            .map(|(article, tag)| article_tag::Model {
-                article_id: self.articles.as_ref().unwrap()[*article as usize - 1].id,
-                tag_id: self.tags.as_ref().unwrap()[*tag as usize - 1].id,
-            })
-            .collect();
+        let gen_article_tags = |relations: RelArticleTag| {
+            relations
+                .iter()
+                .map(|(article, tag)| {
+                    match (self.articles.as_ref().unwrap(), self.tags.as_ref().unwrap()) {
+                        (Operation::Insert(artcls), Operation::Insert(tgs))
+                        | (Operation::Insert(artcls), Operation::Create(tgs))
+                        | (Operation::Create(artcls), Operation::Create(tgs))
+                        | (Operation::Create(artcls), Operation::Insert(tgs)) => {
+                            article_tag::Model {
+                                article_id: artcls[*article as usize - 1].id,
+                                tag_id: tgs[*tag as usize - 1].id,
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                })
+                .collect()
+        };
+
+        let article_tags = match operation {
+            Operation::Insert(rels) => Operation::Insert(gen_article_tags(rels)),
+            Operation::Create(rels) => Operation::Create(gen_article_tags(rels)),
+            Operation::Migration => Operation::Migration,
+        };
+
         self.article_tags = Some(article_tags);
         self
     }
 
-    pub fn followers(mut self, relations: RelUserFollower) -> Self {
-        let values = relations.0;
-        if values.is_empty() {
+    pub fn followers(mut self, operation: Operation<RelUserFollower>) -> Self {
+        if matches!(&operation, Operation::Insert(rels) | Operation::Create(rels) if rels.is_empty())
+        {
             return self.apply_error(BldrErr::EmptyRel);
         }
-        if self.users.is_none() {
-            return self.apply_error(BldrErr::WrongOrder(
-                "users".to_owned(),
-                "followers".to_owned(),
-            ));
-        }
-        let users_len = self.users.as_ref().unwrap().len();
-        if !values
-            .iter()
-            .all(|&(user, _)| user >= 1 && user <= users_len)
-        {
-            return self.apply_error(BldrErr::OutOfRange("user".to_owned(), users_len));
-        }
-        if !values
-            .iter()
-            .all(|&(_, follower)| follower >= 1 && follower <= users_len)
-        {
-            return self.apply_error(BldrErr::OutOfRange("follower".to_owned(), users_len));
+
+        match (&operation, &self.users) {
+            (Operation::Insert(rels), Some(Operation::Insert(mdls)))
+            | (Operation::Create(rels), Some(Operation::Insert(mdls)))
+            | (Operation::Create(rels), Some(Operation::Create(mdls))) => {
+                let users_len = mdls.len();
+                if !rels.iter().all(|&(user, _)| user >= 1 && user <= users_len) {
+                    return self.apply_error(BldrErr::OutOfRange("user".to_owned(), users_len));
+                }
+                if !rels
+                    .iter()
+                    .all(|&(_, follower)| follower >= 1 && follower <= users_len)
+                {
+                    return self.apply_error(BldrErr::OutOfRange("follower".to_owned(), users_len));
+                }
+            }
+            (Operation::Migration, Some(_)) => (),
+            _ => {
+                return self.apply_error(BldrErr::WrongOrder(
+                    "users".to_owned(),
+                    "followers".to_owned(),
+                ));
+            }
         }
 
-        let followers = values
-            .iter()
-            .map(|(user, follower)| follower::Model {
-                user_id: self.users.as_ref().unwrap()[*user as usize - 1].id,
-                follower_id: self.users.as_ref().unwrap()[*follower as usize - 1].id,
-            })
-            .collect();
+        let gen_followers = |relations: RelUserFollower| {
+            relations
+                .iter()
+                .map(|(user, follower)| match self.users.as_ref().unwrap() {
+                    Operation::Insert(users) | Operation::Create(users) => follower::Model {
+                        user_id: users[*user as usize - 1].id,
+                        follower_id: users[*follower as usize - 1].id,
+                    },
+                    _ => unreachable!(),
+                })
+                .collect()
+        };
+
+        let followers = match operation {
+            Operation::Insert(rels) => Operation::Insert(gen_followers(rels)),
+            Operation::Create(rels) => Operation::Create(gen_followers(rels)),
+            Operation::Migration => Operation::Migration,
+        };
+
         self.followers = Some(followers);
         self
     }
 
-    pub fn favorited_articles(mut self, relations: RelArticleUser) -> Self {
-        let values = relations.0;
-        if values.is_empty() {
+    pub fn favorited_articles(mut self, operation: Operation<RelArticleUser>) -> Self {
+        if matches!(&operation, Operation::Insert(rels) | Operation::Create(rels) if rels.is_empty())
+        {
             return self.apply_error(BldrErr::EmptyRel);
         }
-        if self.articles.is_none() {
-            return self.apply_error(BldrErr::WrongOrder(
-                "articles".to_owned(),
-                "favorited_articles".to_owned(),
-            ));
-        }
-        let articles_len = self.articles.as_ref().unwrap().len();
-        if !values
-            .iter()
-            .all(|&(article, _)| article >= 1 && article <= articles_len)
-        {
-            return self.apply_error(BldrErr::OutOfRange("article".to_owned(), articles_len));
-        }
-        let users_len = self.users.as_ref().unwrap().len();
-        if !values
-            .iter()
-            .all(|&(_, user)| user >= 1 && user <= users_len)
-        {
-            return self.apply_error(BldrErr::OutOfRange("user".to_owned(), users_len));
+
+        match (&operation, &self.articles, &self.users) {
+            (
+                Operation::Insert(rels),
+                Some(Operation::Insert(artcls)),
+                Some(Operation::Insert(usrs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Create(artcls)),
+                Some(Operation::Create(usrs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Insert(artcls)),
+                Some(Operation::Create(usrs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Create(artcls)),
+                Some(Operation::Insert(usrs)),
+            )
+            | (
+                Operation::Create(rels),
+                Some(Operation::Insert(artcls)),
+                Some(Operation::Insert(usrs)),
+            ) => {
+                let articles_len = artcls.len();
+                if !rels
+                    .iter()
+                    .all(|&(article, _)| article >= 1 && article <= articles_len)
+                {
+                    return self
+                        .apply_error(BldrErr::OutOfRange("article".to_owned(), articles_len));
+                }
+                let users_len = usrs.len();
+                if !rels.iter().all(|&(_, user)| user >= 1 && user <= users_len) {
+                    return self.apply_error(BldrErr::OutOfRange("user".to_owned(), users_len));
+                }
+            }
+            (Operation::Migration, Some(_), Some(_)) => (),
+            _ => {
+                return self.apply_error(BldrErr::WrongOrder(
+                    "articles".to_owned(),
+                    "favorited_articles".to_owned(),
+                ));
+            }
         }
 
-        let favorited_articles = values
-            .iter()
-            .map(|(article, user)| favorited_article::Model {
-                article_id: self.articles.as_ref().unwrap()[*article as usize - 1].id,
-                user_id: self.users.as_ref().unwrap()[*user as usize - 1].id,
-            })
-            .collect();
+        let gen_favorited_articles = |relations: RelArticleUser| {
+            relations
+                .iter()
+                .map(|(article, user)| {
+                    match (
+                        self.articles.as_ref().unwrap(),
+                        self.users.as_ref().unwrap(),
+                    ) {
+                        (Operation::Insert(artcls), Operation::Insert(usrs))
+                        | (Operation::Insert(artcls), Operation::Create(usrs))
+                        | (Operation::Create(artcls), Operation::Create(usrs))
+                        | (Operation::Create(artcls), Operation::Insert(usrs)) => {
+                            favorited_article::Model {
+                                article_id: artcls[*article as usize - 1].id,
+                                user_id: usrs[*user as usize - 1].id,
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                })
+                .collect()
+        };
+
+        let favorited_articles = match operation {
+            Operation::Insert(rels) => Operation::Insert(gen_favorited_articles(rels)),
+            Operation::Create(rels) => Operation::Create(gen_favorited_articles(rels)),
+            Operation::Migration => Operation::Migration,
+        };
+
         self.favorited_articles = Some(favorited_articles);
         self
     }
 
-    async fn insert<E: EntityTrait, AM: ActiveModelTrait<Entity = E> + From<E::Model>>(
+    async fn exec<E: EntityTrait, AM: ActiveModelTrait<Entity = E> + From<E::Model>>(
         &self,
         db: &DatabaseConnection,
         migrations: Vec<&str>,
-        models: &Option<Vec<E::Model>>,
-    ) -> Result<(), DbErr> {
-        if models.is_none() {
-            return Ok(());
+        operations: &Option<Operation<Vec<E::Model>>>,
+    ) -> Result<Option<Vec<E::Model>>, DbErr> {
+        if operations.is_none() {
+            return Ok(None);
         }
         for migration in migrations {
             execute_migration(db, migration).await?;
         }
 
-        if !self.only_models {
-            let actives = Self::activate_models::<E, AM>(models);
-            E::insert_many(actives).exec(db).await?;
+        match operations.as_ref().unwrap() {
+            Operation::Insert(models) => {
+                let actives = Self::activate_models::<E, AM>(&Some(models.to_vec()));
+                E::insert_many(actives).exec(db).await?;
+                Ok(Some(models.to_vec()))
+            }
+            Operation::Create(models) => Ok(Some(models.to_vec())),
+            Operation::Migration => Ok(None),
         }
-
-        Ok(())
     }
 
     pub fn activate_models<E: EntityTrait, AM: ActiveModelTrait<Entity = E> + From<E::Model>>(
@@ -391,76 +611,78 @@ impl TestDataBuilder {
             .collect()
     }
 
-    pub fn only_models(mut self) -> Self {
-        self.only_models = true;
-        self
-    }
-
     pub async fn build(self) -> Result<(DatabaseConnection, TestData), BldrErr> {
         let connection = init_test_db_connection().await?;
 
-        self.insert::<User, user::ActiveModel>(
-            &connection,
-            vec![
-                "m20231030_000001_create_user_table",
-                "m20231112_000008_add_user_password",
-            ],
-            &self.users,
-        )
-        .await?;
+        let users = self
+            .exec::<User, user::ActiveModel>(
+                &connection,
+                vec![
+                    "m20231030_000001_create_user_table",
+                    "m20231112_000008_add_user_password",
+                ],
+                &self.users,
+            )
+            .await?;
 
-        self.insert::<Article, article::ActiveModel>(
-            &connection,
-            vec!["m20231030_000002_create_article_table"],
-            &self.articles,
-        )
-        .await?;
+        let articles = self
+            .exec::<Article, article::ActiveModel>(
+                &connection,
+                vec!["m20231030_000002_create_article_table"],
+                &self.articles,
+            )
+            .await?;
 
-        self.insert::<Comment, comment::ActiveModel>(
-            &connection,
-            vec!["m20231030_000003_create_comment_table"],
-            &self.comments,
-        )
-        .await?;
+        let comments = self
+            .exec::<Comment, comment::ActiveModel>(
+                &connection,
+                vec!["m20231030_000003_create_comment_table"],
+                &self.comments,
+            )
+            .await?;
 
-        self.insert::<Tag, tag::ActiveModel>(
-            &connection,
-            vec!["m20231030_000004_create_tag_table"],
-            &self.tags,
-        )
-        .await?;
+        let tags = self
+            .exec::<Tag, tag::ActiveModel>(
+                &connection,
+                vec!["m20231030_000004_create_tag_table"],
+                &self.tags,
+            )
+            .await?;
 
-        self.insert::<ArticleTag, article_tag::ActiveModel>(
-            &connection,
-            vec!["m20231030_000005_create_article_tag_table"],
-            &self.article_tags,
-        )
-        .await?;
+        let article_tags = self
+            .exec::<ArticleTag, article_tag::ActiveModel>(
+                &connection,
+                vec!["m20231030_000005_create_article_tag_table"],
+                &self.article_tags,
+            )
+            .await?;
 
-        self.insert::<Follower, follower::ActiveModel>(
-            &connection,
-            vec!["m20231101_000006_create_follower_table"],
-            &self.followers,
-        )
-        .await?;
+        let followers = self
+            .exec::<Follower, follower::ActiveModel>(
+                &connection,
+                vec!["m20231101_000006_create_follower_table"],
+                &self.followers,
+            )
+            .await?;
 
-        self.insert::<FavoritedArticle, favorited_article::ActiveModel>(
-            &connection,
-            vec!["m20231104_000007_create_favorited_article_table"],
-            &self.favorited_articles,
-        )
-        .await?;
+        let favorited_articles = self
+            .exec::<FavoritedArticle, favorited_article::ActiveModel>(
+                &connection,
+                vec!["m20231104_000007_create_favorited_article_table"],
+                &self.favorited_articles,
+            )
+            .await?;
 
         Ok((
             connection,
             TestData {
-                users: self.users,
-                articles: self.articles,
-                comments: self.comments,
-                tags: self.tags,
-                article_tags: self.article_tags,
-                followers: self.followers,
-                favorited_articles: self.favorited_articles,
+                users,
+                articles,
+                comments,
+                tags,
+                article_tags,
+                followers,
+                favorited_articles,
             },
         ))
     }
@@ -480,6 +702,7 @@ pub struct TestData {
 #[cfg(test)]
 mod test_test_data_builder {
     use super::*;
+    use crate::tests::Operation::Insert;
     use sea_orm::RuntimeErr;
     use std::vec;
     use uuid::Uuid;
@@ -564,7 +787,6 @@ mod test_test_data_builder {
             followers: None,
             favorited_articles: None,
             error: None,
-            only_models: false,
         };
         assert_eq!(tested, expected);
     }
@@ -586,8 +808,12 @@ mod test_test_data_builder {
     // TEST USERS
     #[test]
     fn test_users() {
-        let tested = TestDataBuilder::new().users(2);
-        assert_eq!(tested.users.unwrap().len(), 2);
+        let tested = TestDataBuilder::new().users(Insert(2));
+        if let Some(Insert(models)) = tested.users {
+            assert_eq!(models.len(), 2);
+        } else {
+            panic!("{:?}", "users not set in builder");
+        }
     }
 
     #[test]
@@ -596,16 +822,20 @@ mod test_test_data_builder {
             error: Some(BldrErr::ZeroQty),
             ..Default::default()
         };
-        assert_eq!(TestDataBuilder::new().users(0), expected);
+        assert_eq!(TestDataBuilder::new().users(Insert(0)), expected);
     }
 
     // TEST ARTICLES
     #[test]
     fn test_articles() {
         let tested = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2, 2]));
-        assert_eq!(tested.articles.unwrap().len(), 3);
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2, 2]));
+        if let Some(Insert(models)) = tested.articles {
+            assert_eq!(models.len(), 3);
+        } else {
+            panic!("{:?}", "articles not set in builder");
+        }
     }
 
     #[test]
@@ -614,23 +844,27 @@ mod test_test_data_builder {
             "users".to_owned(),
             "articles".to_owned(),
         ));
-        let tested = TestDataBuilder::new().articles(RelUser(vec![1, 2, 2]));
+        let tested = TestDataBuilder::new().articles(Insert(vec![1, 2, 2]));
         assert_eq!(tested.error, expected);
     }
 
     #[test]
     fn test_articles_empty_input() {
         let expected = Some(BldrErr::EmptyRel);
-        let tested = TestDataBuilder::new().articles(RelUser(vec![]));
+        let tested = TestDataBuilder::new().articles(Insert(vec![]));
         assert_eq!(tested.error, expected);
     }
 
     #[test]
     fn test_articles_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("user".to_owned(), 2));
-        let tested1 = TestDataBuilder::new().users(2).articles(RelUser(vec![0]));
+        let tested1 = TestDataBuilder::new()
+            .users(Insert(2))
+            .articles(Insert(vec![0]));
         assert_eq!(tested1.error, expected);
-        let tested2 = TestDataBuilder::new().users(2).articles(RelUser(vec![3]));
+        let tested2 = TestDataBuilder::new()
+            .users(Insert(2))
+            .articles(Insert(vec![3]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -638,10 +872,14 @@ mod test_test_data_builder {
     #[test]
     fn test_comments() {
         let tested = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2, 2]))
-            .comments(RelAuthorArticle(vec![(1, 1), (2, 3), (2, 2)]));
-        assert_eq!(tested.comments.unwrap().len(), 3);
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2, 2]))
+            .comments(Insert(vec![(1, 1), (2, 3), (2, 2)]));
+        if let Some(Insert(models)) = tested.comments {
+            assert_eq!(models.len(), 3);
+        } else {
+            panic!("{:?}", "comments not set in builder");
+        }
     }
 
     #[test]
@@ -651,15 +889,15 @@ mod test_test_data_builder {
             "comments".to_owned(),
         ));
         let tested = TestDataBuilder::new()
-            .users(2)
-            .comments(RelAuthorArticle(vec![(1, 2), (1, 2)]));
+            .users(Insert(2))
+            .comments(Insert(vec![(1, 2), (1, 2)]));
         assert_eq!(tested.error, expected);
     }
 
     #[test]
     fn test_comments_empty_input() {
         let expected = Some(BldrErr::EmptyRel);
-        let tested = TestDataBuilder::new().comments(RelAuthorArticle(vec![]));
+        let tested = TestDataBuilder::new().comments(Insert(vec![]));
         assert_eq!(tested.error, expected);
     }
 
@@ -667,15 +905,15 @@ mod test_test_data_builder {
     fn test_author_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("author".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2]))
-            .comments(RelAuthorArticle(vec![(0, 2)]));
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .comments(Insert(vec![(0, 2)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2]))
-            .comments(RelAuthorArticle(vec![(3, 2)]));
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .comments(Insert(vec![(3, 2)]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -683,23 +921,27 @@ mod test_test_data_builder {
     fn test_article_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("article".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2]))
-            .comments(RelAuthorArticle(vec![(1, 0)]));
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .comments(Insert(vec![(1, 0)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2]))
-            .comments(RelAuthorArticle(vec![(1, 3)]));
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .comments(Insert(vec![(1, 3)]));
         assert_eq!(tested2.error, expected);
     }
 
     // TEST TAGS
     #[test]
     fn test_tags() {
-        let tested = TestDataBuilder::new().tags(2);
-        assert_eq!(tested.tags.unwrap().len(), 2);
+        let tested = TestDataBuilder::new().tags(Insert(2));
+        if let Some(Insert(models)) = tested.tags {
+            assert_eq!(models.len(), 2);
+        } else {
+            panic!("{:?}", "tags not set in builder");
+        }
     }
 
     #[test]
@@ -708,18 +950,22 @@ mod test_test_data_builder {
             error: Some(BldrErr::ZeroQty),
             ..Default::default()
         };
-        assert_eq!(TestDataBuilder::new().tags(0), expected);
+        assert_eq!(TestDataBuilder::new().tags(Insert(0)), expected);
     }
 
     // TEST ARTICLE_TAGS
     #[test]
     fn test_article_tags() {
         let tested = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2, 2]))
-            .tags(2)
-            .article_tags(RelArticleTag(vec![(1, 1), (2, 2), (3, 2)]));
-        assert_eq!(tested.article_tags.unwrap().len(), 3);
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2, 2]))
+            .tags(Insert(2))
+            .article_tags(Insert(vec![(1, 1), (2, 2), (3, 2)]));
+        if let Some(Insert(models)) = tested.article_tags {
+            assert_eq!(models.len(), 3);
+        } else {
+            panic!("{:?}", "article_tags not set in builder");
+        }
     }
 
     #[test]
@@ -729,8 +975,8 @@ mod test_test_data_builder {
             "article_tags".to_owned(),
         ));
         let tested = TestDataBuilder::new()
-            .tags(2)
-            .article_tags(RelArticleTag(vec![(1, 2), (1, 2)]));
+            .tags(Insert(2))
+            .article_tags(Insert(vec![(1, 2), (1, 2)]));
         assert_eq!(tested.error, expected);
     }
 
@@ -741,16 +987,16 @@ mod test_test_data_builder {
             "article_tags".to_owned(),
         ));
         let tested = TestDataBuilder::new()
-            .users(3)
-            .articles(RelUser(vec![1, 2, 2]))
-            .article_tags(RelArticleTag(vec![(1, 2), (1, 2)]));
+            .users(Insert(3))
+            .articles(Insert(vec![1, 2, 2]))
+            .article_tags(Insert(vec![(1, 2), (1, 2)]));
         assert_eq!(tested.error, expected);
     }
 
     #[test]
     fn test_article_tags_empty_input() {
         let expected = Some(BldrErr::EmptyRel);
-        let tested = TestDataBuilder::new().comments(RelAuthorArticle(vec![]));
+        let tested = TestDataBuilder::new().comments(Insert(vec![]));
         assert_eq!(tested.error, expected);
     }
 
@@ -758,17 +1004,17 @@ mod test_test_data_builder {
     fn test_article_tags_article_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("article".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .tags(2)
-            .articles(RelUser(vec![1, 2]))
-            .article_tags(RelArticleTag(vec![(0, 1)]));
+            .users(Insert(2))
+            .tags(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .article_tags(Insert(vec![(0, 1)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .tags(2)
-            .articles(RelUser(vec![1, 2]))
-            .article_tags(RelArticleTag(vec![(3, 1)]));
+            .users(Insert(2))
+            .tags(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .article_tags(Insert(vec![(3, 1)]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -776,17 +1022,17 @@ mod test_test_data_builder {
     fn test_article_tags_tag_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("tag".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .tags(2)
-            .articles(RelUser(vec![1, 2]))
-            .article_tags(RelArticleTag(vec![(1, 0)]));
+            .users(Insert(2))
+            .tags(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .article_tags(Insert(vec![(1, 0)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .tags(2)
-            .articles(RelUser(vec![1, 2]))
-            .article_tags(RelArticleTag(vec![(2, 3)]));
+            .users(Insert(2))
+            .tags(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .article_tags(Insert(vec![(2, 3)]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -794,9 +1040,13 @@ mod test_test_data_builder {
     #[test]
     fn test_followers() {
         let tested = TestDataBuilder::new()
-            .users(2)
-            .followers(RelUserFollower(vec![(1, 2), (2, 1)]));
-        assert_eq!(tested.followers.unwrap().len(), 2);
+            .users(Insert(2))
+            .followers(Insert(vec![(1, 2), (2, 1)]));
+        if let Some(Insert(models)) = tested.followers {
+            assert_eq!(models.len(), 2);
+        } else {
+            panic!("{:?}", "followers not set in builder");
+        }
     }
 
     #[test]
@@ -805,14 +1055,14 @@ mod test_test_data_builder {
             "users".to_owned(),
             "followers".to_owned(),
         ));
-        let tested = TestDataBuilder::new().followers(RelUserFollower(vec![(1, 2), (2, 1)]));
+        let tested = TestDataBuilder::new().followers(Insert(vec![(1, 2), (2, 1)]));
         assert_eq!(tested.error, expected);
     }
 
     #[test]
     fn test_followers_empty_input() {
         let expected = Some(BldrErr::EmptyRel);
-        let tested = TestDataBuilder::new().followers(RelUserFollower(vec![]));
+        let tested = TestDataBuilder::new().followers(Insert(vec![]));
         assert_eq!(tested.error, expected);
     }
 
@@ -820,13 +1070,13 @@ mod test_test_data_builder {
     fn test_follower_user_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("user".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .followers(RelUserFollower(vec![(0, 2)]));
+            .users(Insert(2))
+            .followers(Insert(vec![(0, 2)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .followers(RelUserFollower(vec![(3, 2)]));
+            .users(Insert(2))
+            .followers(Insert(vec![(3, 2)]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -834,13 +1084,13 @@ mod test_test_data_builder {
     fn test_follower_follower_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("follower".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .followers(RelUserFollower(vec![(1, 0)]));
+            .users(Insert(2))
+            .followers(Insert(vec![(1, 0)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .followers(RelUserFollower(vec![(1, 3)]));
+            .users(Insert(2))
+            .followers(Insert(vec![(1, 3)]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -848,10 +1098,14 @@ mod test_test_data_builder {
     #[test]
     fn test_favorited_articles() {
         let tested = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2, 2]))
-            .favorited_articles(RelArticleUser(vec![(1, 1), (2, 2), (3, 2)]));
-        assert_eq!(tested.favorited_articles.unwrap().len(), 3);
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2, 2]))
+            .favorited_articles(Insert(vec![(1, 1), (2, 2), (3, 2)]));
+        if let Some(Insert(models)) = tested.favorited_articles {
+            assert_eq!(models.len(), 3);
+        } else {
+            panic!("{:?}", "favorited_articles not set in builder");
+        }
     }
 
     #[test]
@@ -861,14 +1115,14 @@ mod test_test_data_builder {
             "favorited_articles".to_owned(),
         ));
         let tested =
-            TestDataBuilder::new().favorited_articles(RelArticleUser(vec![(1, 1), (2, 2), (3, 2)]));
+            TestDataBuilder::new().favorited_articles(Insert(vec![(1, 1), (2, 2), (3, 2)]));
         assert_eq!(tested.error, expected);
     }
 
     #[test]
     fn test_favorited_articles_empty_input() {
         let expected = Some(BldrErr::EmptyRel);
-        let tested = TestDataBuilder::new().favorited_articles(RelArticleUser(vec![]));
+        let tested = TestDataBuilder::new().favorited_articles(Insert(vec![]));
         assert_eq!(tested.error, expected);
     }
 
@@ -876,16 +1130,16 @@ mod test_test_data_builder {
     fn test_favorited_articles_article_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("article".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2]))
-            .favorited_articles(RelArticleUser(vec![(0, 1)]));
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .favorited_articles(Insert(vec![(0, 1)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .tags(2)
-            .articles(RelUser(vec![1, 2]))
-            .favorited_articles(RelArticleUser(vec![(3, 1)]));
+            .users(Insert(2))
+            .tags(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .favorited_articles(Insert(vec![(3, 1)]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -893,15 +1147,15 @@ mod test_test_data_builder {
     fn test_favorited_articles_users_not_in_range() {
         let expected = Some(BldrErr::OutOfRange("user".to_owned(), 2));
         let tested1 = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2]))
-            .favorited_articles(RelArticleUser(vec![(2, 0)]));
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .favorited_articles(Insert(vec![(2, 0)]));
         assert_eq!(tested1.error, expected);
 
         let tested2 = TestDataBuilder::new()
-            .users(2)
-            .articles(RelUser(vec![1, 2]))
-            .favorited_articles(RelArticleUser(vec![(2, 3)]));
+            .users(Insert(2))
+            .articles(Insert(vec![1, 2]))
+            .favorited_articles(Insert(vec![(2, 3)]));
         assert_eq!(tested2.error, expected);
     }
 
@@ -920,13 +1174,13 @@ mod test_test_data_builder {
             .collect();
 
         TestDataBuilder::new()
-            .insert::<User, user::ActiveModel>(
+            .exec::<User, user::ActiveModel>(
                 &connection,
                 vec![
                     "m20231030_000001_create_user_table",
                     "m20231112_000008_add_user_password",
                 ],
-                &Some(expected.clone()),
+                &Some(Insert(expected.clone())),
             )
             .await?;
 
@@ -938,7 +1192,7 @@ mod test_test_data_builder {
 
     #[tokio::test]
     async fn test_build() -> Result<(), BldrErr> {
-        let tested = TestDataBuilder::new().users(2).build().await?;
+        let tested = TestDataBuilder::new().users(Insert(2)).build().await?;
         assert_eq!(tested.1.users.unwrap().len(), 2);
 
         Ok(())

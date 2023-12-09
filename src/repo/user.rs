@@ -168,56 +168,28 @@ impl From<user::Model> for UserWithToken {
 
 #[cfg(test)]
 mod test_get_user_by_email {
-    use super::{create_user, get_user_by_email};
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::user;
-    use sea_orm::{DbErr, Set};
-    use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
+    use super::get_user_by_email;
+    use crate::tests::{
+        BldrErr,
+        Operation::{Insert, Migration},
+        TestData, TestDataBuilder,
+    };
 
     #[tokio::test]
-    async fn get_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-
-        let models: Vec<user::ActiveModel> = (0..5)
-            .map(|x| user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                email: Set(format!("email{x}")),
-                username: Set(format!("username{x}")),
-                bio: Set(Some("bio".to_owned())),
-                image: Set(Some("image".to_owned())),
-                password: Set("password".to_owned()),
-            })
-            .collect();
-
-        let expected_user_id = models[3].id.clone().unwrap();
-        let expected = Some(user::Model {
-            id: expected_user_id,
-            email: "email3".to_owned(),
-            username: "username3".to_owned(),
-            bio: Some("bio".to_owned()),
-            image: Some("image".to_owned()),
-            password: "password".to_owned(),
-        });
-
-        for mdl in models {
-            create_user(&connection, mdl).await?;
-        }
+    async fn get_existing_user() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Insert(5)).build().await?;
+        let expected = users.unwrap().into_iter().nth(2).unwrap();
 
         let result = get_user_by_email(&connection, "email3").await?;
-        assert_eq!(result, expected);
+        assert_eq!(result, Some(expected));
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn get_non_existing_user() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_by_email(&connection, "email3").await?;
         assert_eq!(result, None);
@@ -228,56 +200,28 @@ mod test_get_user_by_email {
 
 #[cfg(test)]
 mod test_get_user_by_username {
-    use super::{create_user, get_user_by_username};
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::user;
-    use sea_orm::{DbErr, Set};
-    use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
+    use super::get_user_by_username;
+    use crate::tests::{
+        BldrErr,
+        Operation::{Insert, Migration},
+        TestData, TestDataBuilder,
+    };
 
     #[tokio::test]
-    async fn get_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-
-        let models: Vec<user::ActiveModel> = (0..5)
-            .map(|x| user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                email: Set(format!("email{x}")),
-                username: Set(format!("username{x}")),
-                bio: Set(Some("bio".to_owned())),
-                image: Set(Some("image".to_owned())),
-                password: Set("password".to_owned()),
-            })
-            .collect();
-
-        let expected_user_id = models[3].id.clone().unwrap();
-        let expected = Some(user::Model {
-            id: expected_user_id,
-            email: "email3".to_owned(),
-            username: "username3".to_owned(),
-            bio: Some("bio".to_owned()),
-            image: Some("image".to_owned()),
-            password: "password".to_owned(),
-        });
-
-        for mdl in models {
-            create_user(&connection, mdl).await?;
-        }
+    async fn get_existing_user() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Insert(5)).build().await?;
+        let expected = users.unwrap().into_iter().nth(2).unwrap();
 
         let result = get_user_by_username(&connection, "username3").await?;
-        assert_eq!(result, expected);
+        assert_eq!(result, Some(expected));
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn get_non_existing_user() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_by_username(&connection, "username3").await?;
         assert_eq!(result, None);
@@ -288,56 +232,29 @@ mod test_get_user_by_username {
 
 #[cfg(test)]
 mod test_get_user_by_id {
-    use super::{create_user, get_user_by_id};
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::user;
-    use sea_orm::{DbErr, Set};
+    use super::get_user_by_id;
+    use crate::tests::{
+        BldrErr,
+        Operation::{Insert, Migration},
+        TestData, TestDataBuilder,
+    };
     use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
 
     #[tokio::test]
-    async fn get_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn get_existing_user() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Insert(5)).build().await?;
+        let expected = users.unwrap().into_iter().nth(2).unwrap();
 
-        let models: Vec<user::ActiveModel> = (0..5)
-            .map(|x| user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                email: Set(format!("email{x}")),
-                username: Set(format!("username{x}")),
-                bio: Set(Some("bio".to_owned())),
-                image: Set(Some("image".to_owned())),
-                password: Set("password".to_owned()),
-            })
-            .collect();
-
-        let expected_user_id = models[3].id.clone().unwrap();
-        let expected = Some(user::Model {
-            id: expected_user_id,
-            email: "email3".to_owned(),
-            username: "username3".to_owned(),
-            bio: Some("bio".to_owned()),
-            image: Some("image".to_owned()),
-            password: "password".to_owned(),
-        });
-
-        for mdl in models {
-            create_user(&connection, mdl).await?;
-        }
-
-        let result = get_user_by_id(&connection, expected_user_id).await?;
-        assert_eq!(result, expected);
+        let result = get_user_by_id(&connection, expected.id).await?;
+        assert_eq!(result, Some(expected));
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn get_non_existing_user() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_by_id(&connection, Uuid::new_v4()).await?;
         assert_eq!(result, None);
@@ -348,61 +265,38 @@ mod test_get_user_by_id {
 
 #[cfg(test)]
 mod test_get_user_with_token_by_id {
-    use super::{create_user, get_user_with_token_by_id, UserWithToken};
-    use crate::{
-        middleware::auth::create_token,
-        tests::{execute_migration, init_test_db_connection},
+    use super::{get_user_with_token_by_id, UserWithToken};
+    use crate::middleware::auth::create_token;
+    use crate::tests::{
+        BldrErr,
+        Operation::{Insert, Migration},
+        TestData, TestDataBuilder,
     };
     use dotenvy::dotenv;
-    use entity::entities::user;
-    use sea_orm::{DbErr, Set};
     use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
 
     #[tokio::test]
     // Also test FromQueryResult implementation for UserWithToken
-    async fn get_existing_user() -> Result<(), DbErr> {
+    async fn get_existing_user() -> Result<(), BldrErr> {
         dotenv().expect(".env file not found");
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Insert(5)).build().await?;
+        let expected_model = users.unwrap().into_iter().nth(2).unwrap();
+        let expected_id = expected_model.id.clone();
+        let expected = UserWithToken {
+            token: create_token(&expected_id).unwrap(),
+            ..expected_model.into()
+        };
 
-        let models: Vec<user::ActiveModel> = (0..5)
-            .map(|x| user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                email: Set(format!("email{x}")),
-                username: Set(format!("username{x}")),
-                bio: Set(Some("bio".to_owned())),
-                image: Set(Some("image".to_owned())),
-                password: Set("password".to_owned()),
-            })
-            .collect();
-
-        let expected_user_id = models[3].id.clone().unwrap();
-        let expected = Some(UserWithToken {
-            token: create_token(&expected_user_id).unwrap(),
-            email: "email3".to_owned(),
-            username: "username3".to_owned(),
-            bio: Some("bio".to_owned()),
-            image: Some("image".to_owned()),
-        });
-
-        for mdl in models {
-            create_user(&connection, mdl).await?;
-        }
-
-        let result = get_user_with_token_by_id(&connection, expected_user_id).await?;
-        assert_eq!(result, expected);
+        let result = get_user_with_token_by_id(&connection, expected_id).await?;
+        assert_eq!(result, Some(expected));
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn get_non_existing_user() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_with_token_by_id(&connection, Uuid::new_v4()).await?;
         assert_eq!(result, None);
@@ -414,28 +308,21 @@ mod test_get_user_with_token_by_id {
 #[cfg(test)]
 mod test_create_user {
     use super::create_user;
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::user;
-    use sea_orm::{DbErr, Set};
-    use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
+    use crate::tests::{
+        BldrErr,
+        Operation::{Create, Insert},
+        TestData, TestDataBuilder,
+    };
+    use entity::entities::{prelude::User, user};
+    use sea_orm::Set;
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-
-        let id = Uuid::new_v4();
-        let model = user::ActiveModel {
-            id: Set(id),
-            email: Set("email".to_owned()),
-            username: Set("username".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
+    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Create(1)).build().await?;
+        let id = users.as_ref().unwrap().iter().next().unwrap().id;
+        let actives = TestDataBuilder::activate_models::<User, user::ActiveModel>(&users);
+        let model = actives.into_iter().next().unwrap();
 
         let insert_result = create_user(&connection, model).await?;
         assert_eq!(insert_result.last_insert_id, id);
@@ -444,31 +331,22 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_existing_id() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn insert_existing_id() -> Result<(), BldrErr> {
+        let (
+            connection,
+            TestData {
+                users: inserted, ..
+            },
+        ) = TestDataBuilder::new().users(Insert(1)).build().await?;
+        let (_, TestData { users, .. }) = TestDataBuilder::new().users(Create(2)).build().await?;
 
-        let id = Uuid::new_v4();
-        let model1 = user::ActiveModel {
-            id: Set(id),
-            email: Set("email1".to_owned()),
-            username: Set("username1".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
-
+        let inserted_id = inserted.unwrap().into_iter().next().unwrap().id;
+        let second_user = users.unwrap().into_iter().nth(1).unwrap();
         let model2 = user::ActiveModel {
-            id: Set(id),
-            email: Set("email2".to_owned()),
-            username: Set("username2".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
+            id: Set(inserted_id),
+            ..second_user.into()
         };
 
-        create_user(&connection, model1).await?;
         let insert_result = create_user(&connection, model2).await;
 
         assert!(insert_result.is_err_and(|err| err
@@ -479,31 +357,22 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_existing_email() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn insert_existing_email() -> Result<(), BldrErr> {
+        let (
+            connection,
+            TestData {
+                users: inserted, ..
+            },
+        ) = TestDataBuilder::new().users(Insert(1)).build().await?;
+        let (_, TestData { users, .. }) = TestDataBuilder::new().users(Create(2)).build().await?;
 
-        let email = Set("test_email".to_owned());
-        let model1 = user::ActiveModel {
-            id: Set(Uuid::new_v4()),
-            email: email.clone(),
-            username: Set("username1".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
-
+        let inserted_email = inserted.unwrap().into_iter().next().unwrap().email;
+        let second_user = users.unwrap().into_iter().nth(1).unwrap();
         let model2 = user::ActiveModel {
-            id: Set(Uuid::new_v4()),
-            email,
-            username: Set("username2".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
+            email: Set(inserted_email),
+            ..second_user.into()
         };
 
-        create_user(&connection, model1).await?;
         let insert_result = create_user(&connection, model2).await;
 
         assert!(insert_result.is_err_and(|err| err
@@ -514,31 +383,21 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_existing_username() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn insert_existing_username() -> Result<(), BldrErr> {
+        let (
+            connection,
+            TestData {
+                users: inserted, ..
+            },
+        ) = TestDataBuilder::new().users(Insert(1)).build().await?;
+        let (_, TestData { users, .. }) = TestDataBuilder::new().users(Create(2)).build().await?;
 
-        let username = Set("test_username".to_owned());
-        let model1 = user::ActiveModel {
-            id: Set(Uuid::new_v4()),
-            email: Set("email1".to_owned()),
-            username: username.clone(),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
-
+        let inserted_username = inserted.unwrap().into_iter().next().unwrap().username;
+        let second_user = users.unwrap().into_iter().nth(1).unwrap();
         let model2 = user::ActiveModel {
-            id: Set(Uuid::new_v4()),
-            email: Set("email2".to_owned()),
-            username,
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
+            username: Set(inserted_username),
+            ..second_user.into()
         };
-
-        create_user(&connection, model1).await?;
         let insert_result = create_user(&connection, model2).await;
 
         assert!(insert_result.is_err_and(|err| err
@@ -549,18 +408,14 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_empty_email() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn insert_empty_email() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Create(1)).build().await?;
+        let created = users.unwrap().into_iter().next().unwrap();
 
         let model = user::ActiveModel {
-            id: Set(Uuid::new_v4()),
             email: Set("".to_owned()),
-            username: Set("username".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
+            ..created.into()
         };
 
         let insert_result = create_user(&connection, model).await;
@@ -572,18 +427,14 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_empty_username() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn insert_empty_username() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Create(1)).build().await?;
+        let created = users.unwrap().into_iter().next().unwrap();
 
         let model = user::ActiveModel {
-            id: Set(Uuid::new_v4()),
-            email: Set("email".to_owned()),
             username: Set("".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
+            ..created.into()
         };
 
         let insert_result = create_user(&connection, model).await;
@@ -598,35 +449,21 @@ mod test_create_user {
 
 #[cfg(test)]
 mod test_update_user {
-    use super::{create_user, update_user};
-    use crate::tests::{execute_migration, init_test_db_connection};
+    use super::update_user;
+    use crate::tests::{
+        BldrErr,
+        Operation::{Insert, Migration},
+        TestData, TestDataBuilder,
+    };
     use entity::entities::user;
-    use sea_orm::{ActiveModelTrait, DbErr, Set};
+    use sea_orm::ActiveModelTrait;
     use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
 
     #[tokio::test]
-    async fn update_existing_data() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-
-        let models: Vec<user::ActiveModel> = (0..5)
-            .map(|x| user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                email: Set(format!("email{x}")),
-                username: Set(format!("username{x}")),
-                bio: Set(Some("bio".to_owned())),
-                image: Set(Some("image".to_owned())),
-                password: Set("password".to_owned()),
-            })
-            .collect();
-
-        let id = models[3].id.clone().unwrap();
-        for mdl in models {
-            create_user(&connection, mdl).await?;
-        }
+    async fn update_existing_data() -> Result<(), BldrErr> {
+        let (connection, TestData { users, .. }) =
+            TestDataBuilder::new().users(Insert(5)).build().await?;
+        let id = users.unwrap().into_iter().nth(3).unwrap().id;
 
         let expected = user::Model {
             id,
@@ -645,10 +482,8 @@ mod test_update_user {
     }
 
     #[tokio::test]
-    async fn update_not_existing_data() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn update_not_existing_data() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let expected = user::Model {
             id: Uuid::new_v4(),
@@ -671,36 +506,12 @@ mod test_update_user {
 
 #[cfg(test)]
 mod test_get_profile_by_username {
-    use super::{create_user, get_profile_by_username, Profile};
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::user;
-    use sea_orm::{DbErr, Set};
-    use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
-    const FOLLOWER_TABLE_MIGRATION: &str = "m20231101_000006_create_follower_table";
+    use super::{get_profile_by_username, Profile};
+    use crate::tests::{BldrErr, Operation::Insert, TestDataBuilder};
 
     #[tokio::test]
-    async fn get_existing_profile() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-        execute_migration(&connection, FOLLOWER_TABLE_MIGRATION).await?;
-
-        let models: Vec<user::ActiveModel> = (0..5)
-            .map(|x| user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                email: Set(format!("email{x}")),
-                username: Set(format!("username{x}")),
-                bio: Set(Some("bio".to_owned())),
-                image: Set(Some("image".to_owned())),
-                password: Set("password".to_owned()),
-            })
-            .collect();
-
-        for mdl in models {
-            create_user(&connection, mdl).await?;
-        }
+    async fn get_existing_profile() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Insert(5)).build().await?;
 
         let expected = Profile {
             username: "username3".to_owned(),
@@ -716,10 +527,8 @@ mod test_get_profile_by_username {
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn get_non_existing_user() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Insert(5)).build().await?;
 
         let result = get_profile_by_username(&connection, "non existing username", None).await?;
         assert_eq!(result, None);
@@ -730,55 +539,22 @@ mod test_get_profile_by_username {
 
 #[cfg(test)]
 mod test_author_followed_by_current_user {
-    use super::{create_user, get_profile_by_username, Profile};
-    use crate::repo::follower::create_follower;
-    use crate::tests::{execute_migration, init_test_db_connection};
-    use entity::entities::follower;
-
-    use entity::entities::user;
-    use sea_orm::{DbErr, Set};
+    use super::{get_profile_by_username, Profile};
+    use crate::tests::{
+        BldrErr,
+        Operation::{Insert, Migration},
+        TestData, TestDataBuilder,
+    };
     use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
-    const FOLLOWER_TABLE_MIGRATION: &str = "m20231101_000006_create_follower_table";
 
     #[tokio::test]
-    async fn get_existing_profile_with_follower() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-        execute_migration(&connection, FOLLOWER_TABLE_MIGRATION).await?;
-
-        let user_id = Uuid::new_v4();
-        let follower_id = Uuid::new_v4();
-
-        let user1 = user::ActiveModel {
-            id: Set(user_id),
-            email: Set("email1".to_owned()),
-            username: Set("username1".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
-
-        let user2 = user::ActiveModel {
-            id: Set(follower_id),
-            email: Set("email2".to_owned()),
-            username: Set("username2".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
-
-        create_user(&connection, user1).await?;
-        create_user(&connection, user2).await?;
-
-        let model = follower::ActiveModel {
-            user_id: Set(user_id),
-            follower_id: Set(follower_id),
-        };
-
-        create_follower(&connection, model).await?;
+    async fn get_existing_profile_with_follower() -> Result<(), BldrErr> {
+        let (connection, TestData { followers, .. }) = TestDataBuilder::new()
+            .users(Insert(2))
+            .followers(Insert(vec![(1, 2)]))
+            .build()
+            .await?;
+        let follower_id = followers.unwrap().into_iter().next().unwrap().follower_id;
 
         let expected = Profile {
             username: "username1".to_owned(),
@@ -786,7 +562,7 @@ mod test_author_followed_by_current_user {
             image: Some("image".to_owned()),
             following: true,
         };
-        // Used follower username
+
         let result = get_profile_by_username(&connection, "username1", Some(follower_id)).await?;
         assert_eq!(result, Some(expected));
 
@@ -794,43 +570,21 @@ mod test_author_followed_by_current_user {
     }
 
     #[tokio::test]
-    async fn get_existing_profile_wo_follower() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-        execute_migration(&connection, FOLLOWER_TABLE_MIGRATION).await?;
+    async fn get_existing_profile_wo_follower() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new()
+            .users(Insert(2))
+            .followers(Migration)
+            .build()
+            .await?;
 
-        let user_id = Uuid::new_v4();
         let not_follower_id = Uuid::new_v4();
-
-        let user1 = user::ActiveModel {
-            id: Set(user_id),
-            email: Set("email1".to_owned()),
-            username: Set("username1".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
-
-        let user2 = user::ActiveModel {
-            id: Set(not_follower_id),
-            email: Set("email2".to_owned()),
-            username: Set("username2".to_owned()),
-            bio: Set(Some("bio".to_owned())),
-            image: Set(Some("image".to_owned())),
-            password: Set("password".to_owned()),
-        };
-
-        create_user(&connection, user1).await?;
-        create_user(&connection, user2).await?;
-
         let expected = Profile {
             username: "username1".to_owned(),
             bio: Some("bio".to_owned()),
             image: Some("image".to_owned()),
             following: false,
         };
-        // Used follower username
+
         let result =
             get_profile_by_username(&connection, "username1", Some(not_follower_id)).await?;
         assert_eq!(result, Some(expected));
@@ -841,35 +595,18 @@ mod test_author_followed_by_current_user {
 
 #[cfg(test)]
 mod test_empty_user_table {
-    use super::{create_user, empty_user_table, User};
-    use crate::tests::{execute_migration, init_test_db_connection};
+    use super::{empty_user_table, User};
+    use crate::tests::{
+        BldrErr,
+        Operation::{Insert, Migration},
+        TestDataBuilder,
+    };
     use entity::entities::user;
     use sea_orm::EntityTrait;
-    use sea_orm::{DbErr, Set};
-    use uuid::Uuid;
-    const USER_TABLE_MIGRATION: &str = "m20231030_000001_create_user_table";
-    const USER_TABLE_ALTER: &str = "m20231112_000008_add_user_password";
 
     #[tokio::test]
-    async fn delete_existing_users() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
-
-        let models: Vec<user::ActiveModel> = (0..5)
-            .map(|x| user::ActiveModel {
-                id: Set(Uuid::new_v4()),
-                email: Set(format!("email{x}")),
-                username: Set(format!("username{x}")),
-                bio: Set(Some("bio".to_owned())),
-                image: Set(Some("image".to_owned())),
-                password: Set("password".to_owned()),
-            })
-            .collect();
-
-        for mdl in models {
-            create_user(&connection, mdl).await?;
-        }
+    async fn delete_existing_users() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Insert(5)).build().await?;
 
         let delete_result = empty_user_table(&connection).await?;
         assert_eq!(delete_result.rows_affected, 5_u64);
@@ -882,10 +619,8 @@ mod test_empty_user_table {
     }
 
     #[tokio::test]
-    async fn delete_empty_table() -> Result<(), DbErr> {
-        let connection = init_test_db_connection().await?;
-        execute_migration(&connection, USER_TABLE_MIGRATION).await?;
-        execute_migration(&connection, USER_TABLE_ALTER).await?;
+    async fn delete_empty_table() -> Result<(), BldrErr> {
+        let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let delete_result = empty_user_table(&connection).await?;
         assert_eq!(delete_result.rows_affected, 0_u64);
