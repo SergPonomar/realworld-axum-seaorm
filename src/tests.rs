@@ -200,8 +200,8 @@ impl TestDataBuilder {
                     match self.users.as_ref().unwrap() {
                         Operation::Insert(users) | Operation::Create(users) => article::Model {
                             id: Uuid::new_v4(),
-                            slug: format!("title{idx}"),
-                            title: format!("title{idx}"),
+                            slug: format!("title{}", idx + 1),
+                            title: format!("title{}", idx + 1),
                             description: "description".to_owned(),
                             body: "body".to_owned(),
                             author_id: users[*val as usize - 1].id,
@@ -298,7 +298,7 @@ impl TestDataBuilder {
                         | (Operation::Create(usrs), Operation::Create(artcls))
                         | (Operation::Create(usrs), Operation::Insert(artcls)) => comment::Model {
                             id: Uuid::new_v4(),
-                            body: format!("comment{idx}"),
+                            body: format!("comment{}", idx + 1),
                             author_id: usrs[*author as usize - 1].id,
                             article_id: artcls[*article as usize - 1].id,
                             created_at: Some(current_time),
@@ -612,6 +612,10 @@ impl TestDataBuilder {
     }
 
     pub async fn build(self) -> Result<(DatabaseConnection, TestData), BldrErr> {
+        if let Some(err) = self.error {
+            return Err(err);
+        }
+
         let connection = init_test_db_connection().await?;
 
         let users = self

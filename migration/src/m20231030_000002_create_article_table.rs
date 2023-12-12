@@ -16,12 +16,28 @@ impl MigrationTrait for Migration {
                     .col(
                         ColumnDef::new(Article::Slug)
                             .string()
+                            .check(Expr::col(Article::Slug).ne(""))
                             .unique_key()
                             .not_null(),
                     )
-                    .col(ColumnDef::new(Article::Title).string().not_null())
-                    .col(ColumnDef::new(Article::Description).string().not_null())
-                    .col(ColumnDef::new(Article::Body).text().not_null())
+                    .col(
+                        ColumnDef::new(Article::Title)
+                            .string()
+                            .check(Expr::col(Article::Title).ne(""))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Article::Description)
+                            .string()
+                            .check(Expr::col(Article::Description).ne(""))
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Article::Body)
+                            .text()
+                            .check(Expr::col(Article::Body).ne(""))
+                            .not_null(),
+                    )
                     .col(ColumnDef::new(Article::AuthorId).uuid().not_null())
                     .col(
                         ColumnDef::new(Article::CreatedAt)

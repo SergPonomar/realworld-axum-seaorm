@@ -99,7 +99,7 @@ pub async fn get_profile_by_username(
 }
 
 /// Returns expression for determine whether the logged in
-/// user is a follower of the profile.
+/// user is a follower of the profile. Return `false` if user id is not specified.
 pub fn author_followed_by_current_user(user_id: Option<Uuid>) -> SimpleExpr {
     match user_id {
         Some(id) => user::Column::Id.in_subquery(

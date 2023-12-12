@@ -168,11 +168,11 @@ pub async fn create_article(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    let mut article = get_article_by_id(&db, art_res.last_insert_id, current_user_id)
+    let mut article = get_article_by_id(&db, art_res.last_insert_id, Some(current_user_id))
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    article.as_mut().unwrap().tag_list = input.tag_list;
+    // article.as_mut().unwrap().tag_list = input.tag_list;
 
     let article_dto = ArticleDto { article };
     Ok(Json(article_dto))
@@ -220,7 +220,7 @@ pub async fn update_article(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    let mut article = get_article_by_id(&db, art_res.id, current_user_id)
+    let mut article = get_article_by_id(&db, art_res.id, Some(current_user_id))
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
@@ -228,7 +228,7 @@ pub async fn update_article(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    article.as_mut().unwrap().tag_list = Some(tags);
+    // article.as_mut().unwrap().tag_list = Some(tags);
 
     let article_dto = ArticleDto { article };
     Ok(Json(article_dto))
@@ -279,7 +279,7 @@ pub async fn favorite_article(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    let mut article = get_article_by_id(&db, finded.id, current_user_id)
+    let mut article = get_article_by_id(&db, finded.id, Some(current_user_id))
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
@@ -287,7 +287,7 @@ pub async fn favorite_article(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    article.as_mut().unwrap().tag_list = Some(tags);
+    // article.as_mut().unwrap().tag_list = Some(tags);
 
     let article_dto = ArticleDto { article };
     Ok(Json(article_dto))
@@ -317,7 +317,7 @@ pub async fn unfavorite_article(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    let mut article = get_article_by_id(&db, finded.id, current_user_id)
+    let mut article = get_article_by_id(&db, finded.id, Some(current_user_id))
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
@@ -325,7 +325,7 @@ pub async fn unfavorite_article(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    article.as_mut().unwrap().tag_list = Some(tags);
+    // article.as_mut().unwrap().tag_list = Some(tags);
 
     let article_dto = ArticleDto { article };
     Ok(Json(article_dto))
@@ -334,6 +334,7 @@ pub async fn unfavorite_article(
 #[derive(Debug, Serialize)]
 pub struct ArticlesDto {
     articles: Vec<ArticleWithAuthor>,
+    // articles_count: u64,
 }
 
 #[derive(Debug, Serialize)]
