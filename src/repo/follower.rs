@@ -4,7 +4,6 @@ use sea_orm::{DatabaseConnection, DbErr, DeleteResult, EntityTrait, InsertResult
 /// Insert `follower` for the provided `ActiveModel`.
 /// Returns `InsertResult` with last inserted id on success, otherwise
 /// returns an `database error`.
-/// Empty input produce error as not allowed on database level.
 /// See [`InsertResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.InsertResult.html)
 /// documentation for more details.
 pub async fn create_follower(

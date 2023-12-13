@@ -18,24 +18,24 @@ impl MigrationTrait for Migration {
                             .name("idx-article-tag")
                             .if_not_exists()
                             .table(ArticleTag::Table)
-                            .col(ArticleTag::TagId)
-                            .col(ArticleTag::ArticleId),
+                            .col(ArticleTag::ArticleId)
+                            .col(ArticleTag::TagId),
                     )
                     .col(ColumnDef::new(ArticleTag::TagId).uuid().not_null())
                     .col(ColumnDef::new(ArticleTag::ArticleId).uuid().not_null())
                     .foreign_key(
                         ForeignKey::create()
-                            .name("FK_article-tag_tag")
-                            .from(ArticleTag::Table, ArticleTag::TagId)
-                            .to(Tag::Table, Tag::Id)
+                            .name("FK_article-tag_article")
+                            .from(ArticleTag::Table, ArticleTag::ArticleId)
+                            .to(Article::Table, Article::Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
                     .foreign_key(
                         ForeignKey::create()
-                            .name("FK_article-tag_article")
-                            .from(ArticleTag::Table, ArticleTag::ArticleId)
-                            .to(Article::Table, Article::Id)
+                            .name("FK_article-tag_tag")
+                            .from(ArticleTag::Table, ArticleTag::TagId)
+                            .to(Tag::Table, Tag::Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
@@ -54,6 +54,6 @@ impl MigrationTrait for Migration {
 #[derive(DeriveIden)]
 enum ArticleTag {
     Table,
-    TagId,
     ArticleId,
+    TagId,
 }

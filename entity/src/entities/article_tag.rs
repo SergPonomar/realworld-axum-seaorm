@@ -9,9 +9,9 @@ use serde::Deserialize;
 #[sea_orm(table_name = "article_tag")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub tag_id: Uuid,
-    #[sea_orm(primary_key, auto_increment = false)]
     pub article_id: Uuid,
+    #[sea_orm(primary_key, auto_increment = false)]
+    pub tag_id: Uuid,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
