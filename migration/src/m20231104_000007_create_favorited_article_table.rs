@@ -53,8 +53,8 @@ impl MigrationTrait for Migration {
                     .name("idx-favorited_article")
                     .if_not_exists()
                     .table(FavoritedArticle::Table)
-                    .col(FavoritedArticle::UserId)
                     .col(FavoritedArticle::ArticleId)
+                    .col(FavoritedArticle::UserId)
                     .unique()
                     .to_owned(),
             )

@@ -352,7 +352,6 @@ mod test_empty_article_tag_table {
     async fn delete_empty_table() -> Result<(), BldrErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Migration)
-            .users(Migration)
             .articles(Migration)
             .tags(Migration)
             .article_tags(Migration)
