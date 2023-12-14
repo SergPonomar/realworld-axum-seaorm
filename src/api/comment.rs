@@ -46,7 +46,7 @@ pub async fn create_comment(
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
 
-    let comment = get_comment_by_id(&db, cmnt_res.last_insert_id, current_user_id)
+    let comment = get_comment_by_id(&db, cmnt_res.last_insert_id, Some(current_user_id))
         .await
         .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?
         .ok_or((

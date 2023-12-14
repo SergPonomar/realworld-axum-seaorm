@@ -1511,7 +1511,7 @@ mod test_get_article_by_id {
     }
 
     #[tokio::test]
-    async fn none_existing_slug() -> Result<(), BldrErr> {
+    async fn none_existing_id() -> Result<(), BldrErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
