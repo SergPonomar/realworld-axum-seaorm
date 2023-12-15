@@ -38,14 +38,14 @@ pub async fn empty_favorited_article_table(db: &DatabaseConnection) -> Result<De
 #[cfg(test)]
 mod test_favorite_article {
     use super::favorite_article;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use entity::entities::{favorited_article, prelude::FavoritedArticle};
     use sea_orm::Set;
     use std::vec;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+    async fn insert_not_exist_data() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -74,7 +74,7 @@ mod test_favorite_article {
     }
 
     #[tokio::test]
-    async fn insert_not_existing_article() -> Result<(), BldrErr> {
+    async fn insert_not_existing_article() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(5))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -97,7 +97,7 @@ mod test_favorite_article {
     }
 
     #[tokio::test]
-    async fn insert_not_existing_user() -> Result<(), BldrErr> {
+    async fn insert_not_existing_user() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(5))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -120,7 +120,7 @@ mod test_favorite_article {
     }
 
     #[tokio::test]
-    async fn insert_existing_data() -> Result<(), BldrErr> {
+    async fn insert_existing_data() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -151,11 +151,11 @@ mod test_favorite_article {
 #[cfg(test)]
 mod test_unfavorite_article {
     use super::unfavorite_article;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use entity::entities::{favorited_article, prelude::FavoritedArticle};
 
     #[tokio::test]
-    async fn delete_existing_data() -> Result<(), BldrErr> {
+    async fn delete_existing_data() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -184,15 +184,14 @@ mod test_unfavorite_article {
 mod test_empty_favorited_article_table {
     use super::empty_favorited_article_table;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestDataBuilder,
+        TestDataBuilder, TestErr,
     };
     use entity::entities::{favorited_article, prelude::FavoritedArticle};
     use sea_orm::EntityTrait;
 
     #[tokio::test]
-    async fn delete_existing_article_tags() -> Result<(), BldrErr> {
+    async fn delete_existing_article_tags() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(5))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -211,7 +210,7 @@ mod test_empty_favorited_article_table {
     }
 
     #[tokio::test]
-    async fn delete_empty_table() -> Result<(), BldrErr> {
+    async fn delete_empty_table() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Migration)
             .articles(Migration)

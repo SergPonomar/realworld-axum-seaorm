@@ -464,14 +464,13 @@ mod test_get_articles_with_filters {
     use super::get_articles_with_filters;
     use crate::repo::{article::ArticleWithAuthor, user::Profile};
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use std::vec;
 
     #[tokio::test]
-    async fn get_existing_articles() -> Result<(), BldrErr> {
+    async fn get_existing_articles() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -518,7 +517,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn get_empty_list() -> Result<(), BldrErr> {
+    async fn get_empty_list() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Migration)
             .articles(Migration)
@@ -537,7 +536,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_tag_pos() -> Result<(), BldrErr> {
+    async fn filter_article_tag_pos() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -592,7 +591,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_tag_neg() -> Result<(), BldrErr> {
+    async fn filter_article_tag_neg() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1]))
@@ -620,7 +619,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_tag_empty() -> Result<(), BldrErr> {
+    async fn filter_article_tag_empty() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1]))
@@ -648,7 +647,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_author_pos() -> Result<(), BldrErr> {
+    async fn filter_article_author_pos() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -703,7 +702,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_author_neg() -> Result<(), BldrErr> {
+    async fn filter_article_author_neg() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -731,7 +730,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_author_empty() -> Result<(), BldrErr> {
+    async fn filter_article_author_empty() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -759,7 +758,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_user_who_liked_it_pos() -> Result<(), BldrErr> {
+    async fn filter_article_user_who_liked_it_pos() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -814,7 +813,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_user_who_liked_it_neg() -> Result<(), BldrErr> {
+    async fn filter_article_user_who_liked_it_neg() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -842,7 +841,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn filter_article_user_who_liked_it_empty() -> Result<(), BldrErr> {
+    async fn filter_article_user_who_liked_it_empty() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -870,7 +869,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn limit_articles_pos() -> Result<(), BldrErr> {
+    async fn limit_articles_pos() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -918,7 +917,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn limit_articles_zero_val() -> Result<(), BldrErr> {
+    async fn limit_articles_zero_val() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -937,7 +936,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn offset_articles_pos() -> Result<(), BldrErr> {
+    async fn offset_articles_pos() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -985,7 +984,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn offset_articles_zero_val() -> Result<(), BldrErr> {
+    async fn offset_articles_zero_val() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1032,7 +1031,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn articles_author_followed_by_current_user() -> Result<(), BldrErr> {
+    async fn articles_author_followed_by_current_user() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(3))
             .articles(Insert(vec![1, 2]))
@@ -1064,7 +1063,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn articles_favorited_by_current_user() -> Result<(), BldrErr> {
+    async fn articles_favorited_by_current_user() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1]))
@@ -1096,7 +1095,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn articles_favorited_count() -> Result<(), BldrErr> {
+    async fn articles_favorited_count() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(5))
             .articles(Insert(vec![1, 1]))
@@ -1118,7 +1117,7 @@ mod test_get_articles_with_filters {
     }
 
     #[tokio::test]
-    async fn articles_tag_list() -> Result<(), BldrErr> {
+    async fn articles_tag_list() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1]))
@@ -1133,6 +1132,9 @@ mod test_get_articles_with_filters {
             get_articles_with_filters(&connection, None, None, None, None, None, None).await?;
         result.reverse();
 
+        let tags = &mut result[0].tag_list;
+        tags.sort();
+
         assert_eq!(result[0].tag_list, vec!["tag_name1", "tag_name2"]);
         assert_eq!(result[1].favorites_count, 0);
 
@@ -1145,14 +1147,13 @@ mod test_get_articles_feed {
     use super::get_articles_feed;
     use crate::repo::article::ArticleWithAuthor;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use std::vec;
 
     #[tokio::test]
-    async fn get_followed_authors_articles() -> Result<(), BldrErr> {
+    async fn get_followed_authors_articles() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1185,7 +1186,7 @@ mod test_get_articles_feed {
     }
 
     #[tokio::test]
-    async fn user_not_follows_any_other() -> Result<(), BldrErr> {
+    async fn user_not_follows_any_other() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(3))
             .articles(Insert(vec![1, 2, 2]))
@@ -1207,7 +1208,7 @@ mod test_get_articles_feed {
     }
 
     #[tokio::test]
-    async fn limit_articles_pos() -> Result<(), BldrErr> {
+    async fn limit_articles_pos() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1240,7 +1241,7 @@ mod test_get_articles_feed {
     }
 
     #[tokio::test]
-    async fn limit_articles_zero_val() -> Result<(), BldrErr> {
+    async fn limit_articles_zero_val() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(5))
             .articles(Insert(vec![1, 2, 2, 3, 4]))
@@ -1260,7 +1261,7 @@ mod test_get_articles_feed {
     }
 
     #[tokio::test]
-    async fn offset_articles_pos() -> Result<(), BldrErr> {
+    async fn offset_articles_pos() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1294,7 +1295,7 @@ mod test_get_articles_feed {
     }
 
     #[tokio::test]
-    async fn offset_articles_zero_val() -> Result<(), BldrErr> {
+    async fn offset_articles_zero_val() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1330,12 +1331,12 @@ mod test_get_articles_feed {
 #[cfg(test)]
 mod test_get_articles_count {
     use super::get_articles_count;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use std::vec;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn count_articles() -> Result<(), BldrErr> {
+    async fn count_articles() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(5))
             .articles(Insert(vec![1, 2, 2, 3, 4]))
@@ -1389,14 +1390,13 @@ mod test_get_article_by_slug {
     use super::get_article_by_slug;
     use crate::repo::{article::ArticleWithAuthor, user::Profile};
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use std::vec;
 
     #[tokio::test]
-    async fn get_existing_article() -> Result<(), BldrErr> {
+    async fn get_existing_article() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1438,7 +1438,7 @@ mod test_get_article_by_slug {
     }
 
     #[tokio::test]
-    async fn none_existing_slug() -> Result<(), BldrErr> {
+    async fn none_existing_slug() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -1461,15 +1461,14 @@ mod test_get_article_by_id {
     use super::get_article_by_id;
     use crate::repo::{article::ArticleWithAuthor, user::Profile};
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use std::vec;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn get_existing_article() -> Result<(), BldrErr> {
+    async fn get_existing_article() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1511,7 +1510,7 @@ mod test_get_article_by_id {
     }
 
     #[tokio::test]
-    async fn none_existing_id() -> Result<(), BldrErr> {
+    async fn none_existing_id() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -1533,14 +1532,13 @@ mod test_get_article_by_id {
 mod test_get_article_model_by_slug {
     use super::get_article_model_by_slug;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use std::vec;
 
     #[tokio::test]
-    async fn get_existing_article() -> Result<(), BldrErr> {
+    async fn get_existing_article() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -1558,7 +1556,7 @@ mod test_get_article_model_by_slug {
     }
 
     #[tokio::test]
-    async fn none_existing_slug() -> Result<(), BldrErr> {
+    async fn none_existing_slug() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -1580,15 +1578,14 @@ mod test_get_article_model_by_slug {
 mod test_create_article {
     use super::create_article;
     use crate::tests::{
-        BldrErr,
         Operation::{Create, Insert},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use entity::entities::{article, prelude::Article};
     use sea_orm::Set;
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+    async fn insert_not_exist_data() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Create(vec![1]))
@@ -1605,7 +1602,7 @@ mod test_create_article {
     }
 
     #[tokio::test]
-    async fn insert_existing_id() -> Result<(), BldrErr> {
+    async fn insert_existing_id() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1639,7 +1636,7 @@ mod test_create_article {
     }
 
     #[tokio::test]
-    async fn insert_existing_slug() -> Result<(), BldrErr> {
+    async fn insert_existing_slug() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -1673,7 +1670,7 @@ mod test_create_article {
     }
 
     #[tokio::test]
-    async fn insert_empty_slug() -> Result<(), BldrErr> {
+    async fn insert_empty_slug() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Create(vec![1]))
@@ -1695,7 +1692,7 @@ mod test_create_article {
     }
 
     #[tokio::test]
-    async fn insert_empty_title() -> Result<(), BldrErr> {
+    async fn insert_empty_title() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Create(vec![1]))
@@ -1717,7 +1714,7 @@ mod test_create_article {
     }
 
     #[tokio::test]
-    async fn insert_empty_description() -> Result<(), BldrErr> {
+    async fn insert_empty_description() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Create(vec![1]))
@@ -1740,7 +1737,7 @@ mod test_create_article {
     }
 
     #[tokio::test]
-    async fn insert_empty_body() -> Result<(), BldrErr> {
+    async fn insert_empty_body() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Create(vec![1]))
@@ -1766,9 +1763,8 @@ mod test_create_article {
 mod test_update_article {
     use super::update_article;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use chrono::Local;
     use entity::entities::article;
@@ -1776,7 +1772,7 @@ mod test_update_article {
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn update_existing_data() -> Result<(), BldrErr> {
+    async fn update_existing_data() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -1798,7 +1794,7 @@ mod test_update_article {
     }
 
     #[tokio::test]
-    async fn update_not_existing_data() -> Result<(), BldrErr> {
+    async fn update_not_existing_data() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Migration)
             .articles(Migration)
@@ -1829,11 +1825,11 @@ mod test_update_article {
 #[cfg(test)]
 mod test_delete_article {
     use super::delete_article;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use entity::entities::{article, prelude::Article};
 
     #[tokio::test]
-    async fn delete_existing_data() -> Result<(), BldrErr> {
+    async fn delete_existing_data() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 2]))
@@ -1853,15 +1849,14 @@ mod test_delete_article {
 mod test_empty_article_table {
     use super::empty_article_table;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestDataBuilder,
+        TestDataBuilder, TestErr,
     };
     use entity::entities::{article, prelude::Article};
     use sea_orm::EntityTrait;
 
     #[tokio::test]
-    async fn delete_existing_articles() -> Result<(), BldrErr> {
+    async fn delete_existing_articles() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(1))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -1879,7 +1874,7 @@ mod test_empty_article_table {
     }
 
     #[tokio::test]
-    async fn delete_empty_table() -> Result<(), BldrErr> {
+    async fn delete_empty_table() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Migration)
             .articles(Migration)

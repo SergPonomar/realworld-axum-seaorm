@@ -111,7 +111,7 @@ impl FromQueryResult for CommentWithAuthor {
 #[cfg(test)]
 mod test_insert_comment {
     use super::insert_comment;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use chrono::Local;
     use entity::entities::{comment, prelude::Comment};
     use sea_orm::Set;
@@ -119,7 +119,7 @@ mod test_insert_comment {
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+    async fn insert_not_exist_data() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -152,7 +152,7 @@ mod test_insert_comment {
     }
 
     #[tokio::test]
-    async fn insert_not_existing_author() -> Result<(), BldrErr> {
+    async fn insert_not_existing_author() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -179,7 +179,7 @@ mod test_insert_comment {
     }
 
     #[tokio::test]
-    async fn insert_not_existing_article() -> Result<(), BldrErr> {
+    async fn insert_not_existing_article() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -206,7 +206,7 @@ mod test_insert_comment {
     }
 
     #[tokio::test]
-    async fn insert_existing_data() -> Result<(), BldrErr> {
+    async fn insert_existing_data() -> Result<(), TestErr> {
         let (connection, TestData { comments, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -230,12 +230,12 @@ mod test_insert_comment {
 mod test_get_comment_by_id {
     use super::{get_comment_by_id, CommentWithAuthor};
     use crate::repo::user::Profile;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use std::vec;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn get_existing_comment() -> Result<(), BldrErr> {
+    async fn get_existing_comment() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -271,7 +271,7 @@ mod test_get_comment_by_id {
     }
 
     #[tokio::test]
-    async fn none_existing_id() -> Result<(), BldrErr> {
+    async fn none_existing_id() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -290,12 +290,12 @@ mod test_get_comment_by_id {
 #[cfg(test)]
 mod test_get_comments_by_article_id {
     use super::{get_comments_by_article_id, CommentWithAuthor};
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use std::vec;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn get_existing_article_id() -> Result<(), BldrErr> {
+    async fn get_existing_article_id() -> Result<(), TestErr> {
         let (connection, TestData { articles, .. }) = TestDataBuilder::new()
             .users(Insert(5))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -311,7 +311,7 @@ mod test_get_comments_by_article_id {
     }
 
     #[tokio::test]
-    async fn none_existing_article_id() -> Result<(), BldrErr> {
+    async fn none_existing_article_id() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -330,10 +330,10 @@ mod test_get_comments_by_article_id {
 #[cfg(test)]
 mod test_delete_comment {
     use super::delete_comment;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
 
     #[tokio::test]
-    async fn delete_existing_data() -> Result<(), BldrErr> {
+    async fn delete_existing_data() -> Result<(), TestErr> {
         let (connection, TestData { comments, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -353,15 +353,14 @@ mod test_delete_comment {
 mod test_empty_comment_table {
     use super::empty_comment_table;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestDataBuilder,
+        TestDataBuilder, TestErr,
     };
     use entity::entities::{comment, prelude::Comment};
     use sea_orm::EntityTrait;
 
     #[tokio::test]
-    async fn delete_existing_followers() -> Result<(), BldrErr> {
+    async fn delete_existing_followers() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .articles(Insert(vec![1, 1, 1, 1, 1]))
@@ -380,7 +379,7 @@ mod test_empty_comment_table {
     }
 
     #[tokio::test]
-    async fn delete_empty_table() -> Result<(), BldrErr> {
+    async fn delete_empty_table() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Migration)
             .articles(Migration)

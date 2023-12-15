@@ -170,13 +170,12 @@ impl From<user::Model> for UserWithToken {
 mod test_get_user_by_email {
     use super::get_user_by_email;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
 
     #[tokio::test]
-    async fn get_existing_user() -> Result<(), BldrErr> {
+    async fn get_existing_user() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Insert(5)).build().await?;
         let expected = users.unwrap().into_iter().nth(2).unwrap();
@@ -188,7 +187,7 @@ mod test_get_user_by_email {
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), BldrErr> {
+    async fn get_non_existing_user() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_by_email(&connection, "email3").await?;
@@ -202,13 +201,12 @@ mod test_get_user_by_email {
 mod test_get_user_by_username {
     use super::get_user_by_username;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
 
     #[tokio::test]
-    async fn get_existing_user() -> Result<(), BldrErr> {
+    async fn get_existing_user() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Insert(5)).build().await?;
         let expected = users.unwrap().into_iter().nth(2).unwrap();
@@ -220,7 +218,7 @@ mod test_get_user_by_username {
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), BldrErr> {
+    async fn get_non_existing_user() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_by_username(&connection, "username3").await?;
@@ -234,14 +232,13 @@ mod test_get_user_by_username {
 mod test_get_user_by_id {
     use super::get_user_by_id;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn get_existing_user() -> Result<(), BldrErr> {
+    async fn get_existing_user() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Insert(5)).build().await?;
         let expected = users.unwrap().into_iter().nth(2).unwrap();
@@ -253,7 +250,7 @@ mod test_get_user_by_id {
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), BldrErr> {
+    async fn get_non_existing_user() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_by_id(&connection, Uuid::new_v4()).await?;
@@ -268,16 +265,15 @@ mod test_get_user_with_token_by_id {
     use super::{get_user_with_token_by_id, UserWithToken};
     use crate::middleware::auth::create_token;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use dotenvy::dotenv;
     use uuid::Uuid;
 
     #[tokio::test]
     // Also test FromQueryResult implementation for UserWithToken
-    async fn get_existing_user() -> Result<(), BldrErr> {
+    async fn get_existing_user() -> Result<(), TestErr> {
         dotenv().expect(".env file not found");
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Insert(5)).build().await?;
@@ -295,7 +291,7 @@ mod test_get_user_with_token_by_id {
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), BldrErr> {
+    async fn get_non_existing_user() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let result = get_user_with_token_by_id(&connection, Uuid::new_v4()).await?;
@@ -309,15 +305,14 @@ mod test_get_user_with_token_by_id {
 mod test_create_user {
     use super::create_user;
     use crate::tests::{
-        BldrErr,
         Operation::{Create, Insert},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use entity::entities::{prelude::User, user};
     use sea_orm::Set;
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+    async fn insert_not_exist_data() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Create(1)).build().await?;
         let id = users.as_ref().unwrap().iter().next().unwrap().id;
@@ -331,7 +326,7 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_existing_id() -> Result<(), BldrErr> {
+    async fn insert_existing_id() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -357,7 +352,7 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_existing_email() -> Result<(), BldrErr> {
+    async fn insert_existing_email() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -383,7 +378,7 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_existing_username() -> Result<(), BldrErr> {
+    async fn insert_existing_username() -> Result<(), TestErr> {
         let (
             connection,
             TestData {
@@ -408,7 +403,7 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_empty_email() -> Result<(), BldrErr> {
+    async fn insert_empty_email() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Create(1)).build().await?;
         let created = users.unwrap().into_iter().next().unwrap();
@@ -427,7 +422,7 @@ mod test_create_user {
     }
 
     #[tokio::test]
-    async fn insert_empty_username() -> Result<(), BldrErr> {
+    async fn insert_empty_username() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Create(1)).build().await?;
         let created = users.unwrap().into_iter().next().unwrap();
@@ -451,16 +446,15 @@ mod test_create_user {
 mod test_update_user {
     use super::update_user;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use entity::entities::user;
     use sea_orm::ActiveModelTrait;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn update_existing_data() -> Result<(), BldrErr> {
+    async fn update_existing_data() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Insert(5)).build().await?;
         let id = users.unwrap().into_iter().nth(3).unwrap().id;
@@ -482,7 +476,7 @@ mod test_update_user {
     }
 
     #[tokio::test]
-    async fn update_not_existing_data() -> Result<(), BldrErr> {
+    async fn update_not_existing_data() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let expected = user::Model {
@@ -507,10 +501,10 @@ mod test_update_user {
 #[cfg(test)]
 mod test_get_profile_by_username {
     use super::{get_profile_by_username, Profile};
-    use crate::tests::{BldrErr, Operation::Insert, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestDataBuilder, TestErr};
 
     #[tokio::test]
-    async fn get_existing_profile() -> Result<(), BldrErr> {
+    async fn get_existing_profile() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Insert(5)).build().await?;
 
         let expected = Profile {
@@ -527,7 +521,7 @@ mod test_get_profile_by_username {
     }
 
     #[tokio::test]
-    async fn get_non_existing_user() -> Result<(), BldrErr> {
+    async fn get_non_existing_user() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Insert(5)).build().await?;
 
         let result = get_profile_by_username(&connection, "non existing username", None).await?;
@@ -541,14 +535,13 @@ mod test_get_profile_by_username {
 mod test_author_followed_by_current_user {
     use super::{get_profile_by_username, Profile};
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn get_existing_profile_with_follower() -> Result<(), BldrErr> {
+    async fn get_existing_profile_with_follower() -> Result<(), TestErr> {
         let (connection, TestData { followers, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .followers(Insert(vec![(1, 2)]))
@@ -570,7 +563,7 @@ mod test_author_followed_by_current_user {
     }
 
     #[tokio::test]
-    async fn get_existing_profile_wo_follower() -> Result<(), BldrErr> {
+    async fn get_existing_profile_wo_follower() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(2))
             .followers(Migration)
@@ -597,15 +590,14 @@ mod test_author_followed_by_current_user {
 mod test_empty_user_table {
     use super::{empty_user_table, User};
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestDataBuilder,
+        TestDataBuilder, TestErr,
     };
     use entity::entities::user;
     use sea_orm::EntityTrait;
 
     #[tokio::test]
-    async fn delete_existing_users() -> Result<(), BldrErr> {
+    async fn delete_existing_users() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Insert(5)).build().await?;
 
         let delete_result = empty_user_table(&connection).await?;
@@ -619,7 +611,7 @@ mod test_empty_user_table {
     }
 
     #[tokio::test]
-    async fn delete_empty_table() -> Result<(), BldrErr> {
+    async fn delete_empty_table() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new().users(Migration).build().await?;
 
         let delete_result = empty_user_table(&connection).await?;

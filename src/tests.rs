@@ -9,6 +9,8 @@ use sea_orm::{ActiveModelTrait, Database, DatabaseConnection, DbErr, EntityTrait
 use std::{convert::From, error::Error, fmt, matches, unreachable, vec};
 use uuid::Uuid;
 
+use crate::api::error::ApiErr;
+
 pub async fn init_test_db_connection() -> Result<DatabaseConnection, DbErr> {
     Database::connect("sqlite::memory:").await
 }
@@ -71,7 +73,7 @@ pub enum Operation<T> {
     Migration,
 }
 
-/// error reterned by TestDataBuilder
+/// error returned by TestDataBuilder
 #[derive(Debug, PartialEq)]
 pub enum BldrErr {
     ZeroQty,
@@ -122,6 +124,32 @@ impl Error for BldrErr {
             BldrErr::ConnErr(ref e) => Some(e),
             BldrErr::DbErr(ref e) => Some(e),
         }
+    }
+}
+
+/// error returned by Test
+#[derive(Debug, PartialEq)]
+pub enum TestErr {
+    BldrErr(BldrErr),
+    ApiErr(ApiErr),
+    DbErr(DbErr),
+}
+
+impl From<BldrErr> for TestErr {
+    fn from(err: BldrErr) -> TestErr {
+        TestErr::BldrErr(err)
+    }
+}
+
+impl From<ApiErr> for TestErr {
+    fn from(err: ApiErr) -> TestErr {
+        TestErr::ApiErr(err)
+    }
+}
+
+impl From<DbErr> for TestErr {
+    fn from(err: DbErr) -> TestErr {
+        TestErr::DbErr(err)
     }
 }
 

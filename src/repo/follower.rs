@@ -38,16 +38,15 @@ pub async fn empty_follower_table(db: &DatabaseConnection) -> Result<DeleteResul
 mod test_create_follower {
     use super::create_follower;
     use crate::tests::{
-        BldrErr,
         Operation::{Create, Insert, Migration},
-        TestData, TestDataBuilder,
+        TestData, TestDataBuilder, TestErr,
     };
     use entity::entities::{follower, prelude::Follower};
     use sea_orm::Set;
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn insert_not_exist_data() -> Result<(), BldrErr> {
+    async fn insert_not_exist_data() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .followers(Migration)
@@ -70,7 +69,7 @@ mod test_create_follower {
     }
 
     #[tokio::test]
-    async fn insert_not_existing_follower() -> Result<(), BldrErr> {
+    async fn insert_not_existing_follower() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Create(1))
             .followers(Migration)
@@ -92,7 +91,7 @@ mod test_create_follower {
     }
 
     #[tokio::test]
-    async fn insert_not_existing_user() -> Result<(), BldrErr> {
+    async fn insert_not_existing_user() -> Result<(), TestErr> {
         let (connection, TestData { users, .. }) = TestDataBuilder::new()
             .users(Create(1))
             .followers(Migration)
@@ -114,7 +113,7 @@ mod test_create_follower {
     }
 
     #[tokio::test]
-    async fn insert_existing_data() -> Result<(), BldrErr> {
+    async fn insert_existing_data() -> Result<(), TestErr> {
         let (connection, TestData { followers, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .followers(Insert(vec![(1, 2)]))
@@ -137,11 +136,11 @@ mod test_create_follower {
 #[cfg(test)]
 mod test_delete_follower {
     use super::delete_follower;
-    use crate::tests::{BldrErr, Operation::Insert, TestData, TestDataBuilder};
+    use crate::tests::{Operation::Insert, TestData, TestDataBuilder, TestErr};
     use entity::entities::{follower, prelude::Follower};
 
     #[tokio::test]
-    async fn delete_existing_data() -> Result<(), BldrErr> {
+    async fn delete_existing_data() -> Result<(), TestErr> {
         let (connection, TestData { followers, .. }) = TestDataBuilder::new()
             .users(Insert(2))
             .followers(Insert(vec![(1, 2)]))
@@ -162,15 +161,14 @@ mod test_delete_follower {
 mod test_empty_follower_table {
     use super::empty_follower_table;
     use crate::tests::{
-        BldrErr,
         Operation::{Insert, Migration},
-        TestDataBuilder,
+        TestDataBuilder, TestErr,
     };
     use entity::entities::{follower, prelude::Follower};
     use sea_orm::EntityTrait;
 
     #[tokio::test]
-    async fn delete_existing_followers() -> Result<(), BldrErr> {
+    async fn delete_existing_followers() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Insert(4))
             .followers(Insert(vec![(1, 2), (2, 3), (3, 4)]))
@@ -188,7 +186,7 @@ mod test_empty_follower_table {
     }
 
     #[tokio::test]
-    async fn delete_empty_table() -> Result<(), BldrErr> {
+    async fn delete_empty_table() -> Result<(), TestErr> {
         let (connection, _) = TestDataBuilder::new()
             .users(Migration)
             .followers(Migration)
