@@ -1,8 +1,9 @@
 use entity::entities::{prelude::Tag, tag};
 use migration::{Alias, Expr, OnConflict};
+#[cfg(feature = "seed")]
+use sea_orm::DeleteResult;
 use sea_orm::{
-    DatabaseConnection, DbErr, DeleteResult, EntityTrait, InsertResult, QueryFilter, QuerySelect,
-    TryInsertResult,
+    DatabaseConnection, DbErr, EntityTrait, InsertResult, QueryFilter, QuerySelect, TryInsertResult,
 };
 use uuid::Uuid;
 
@@ -35,6 +36,7 @@ pub async fn create_tags(
 /// Empty tag name produce error as not allowed on database level.
 /// See [`InsertResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.InsertResult.html)
 /// documentation for more details.
+#[cfg(any(test, feature = "seed"))]
 pub async fn insert_tag(
     db: &DatabaseConnection,
     tag: tag::ActiveModel,
@@ -75,6 +77,7 @@ pub async fn get_tags(db: &DatabaseConnection) -> Result<Vec<String>, DbErr> {
 /// returns an `database error`.
 /// See [`DeleteResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.DeleteResult.html)
 /// documentation for more details.
+#[cfg(feature = "seed")]
 pub async fn empty_tag_table(db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     Tag::delete_many().exec(db).await
 }
@@ -357,6 +360,7 @@ mod test_get_tags {
 }
 
 #[cfg(test)]
+#[cfg(feature = "seed")]
 mod test_empty_tag_table {
     use super::{empty_tag_table, get_tags};
     use crate::tests::{

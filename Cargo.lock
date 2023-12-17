@@ -596,7 +596,8 @@ dependencies = [
 [[package]]
 name = "cder"
 version = "0.2.1"
-source = "git+https://github.com/estie-inc/cder#597673dc87f5cfae84846d25257ce412b31dce6f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d30fa19274b4780f8aa61b9ae6a4d98eaf39eb84619d6366f108e7aea71d5114"
 dependencies = [
  "anyhow",
  "once_cell",

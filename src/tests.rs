@@ -1,3 +1,4 @@
+use crate::api::error::ApiErr;
 use chrono::{Duration, Local};
 use entity::entities::{
     article, article_tag, comment, favorited_article, follower,
@@ -8,8 +9,6 @@ use migration::{Migrator, MigratorTrait, SchemaManager};
 use sea_orm::{ActiveModelTrait, Database, DatabaseConnection, DbErr, EntityTrait};
 use std::{convert::From, error::Error, fmt, matches, unreachable, vec};
 use uuid::Uuid;
-
-use crate::api::error::ApiErr;
 
 /// Create database connection for test suites.
 pub async fn init_test_db_connection() -> Result<DatabaseConnection, DbErr> {

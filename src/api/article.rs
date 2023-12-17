@@ -303,6 +303,7 @@ pub async fn unfavorite_article(
 
 /// Struct describing JSON object, returned by handler. Contains list of articles.
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ArticlesDto {
     articles: Vec<ArticleWithAuthor>,
     articles_count: u64,

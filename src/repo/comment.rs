@@ -82,6 +82,7 @@ pub async fn delete_comment(
 /// returns an `database error`.
 /// See [`DeleteResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.DeleteResult.html)
 /// documentation for more details.
+#[cfg(feature = "seed")]
 pub async fn empty_comment_table(db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     Comment::delete_many().exec(db).await
 }
@@ -350,6 +351,7 @@ mod test_delete_comment {
 }
 
 #[cfg(test)]
+#[cfg(feature = "seed")]
 mod test_empty_comment_table {
     use super::empty_comment_table;
     use crate::tests::{

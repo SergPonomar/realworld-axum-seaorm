@@ -1,7 +1,9 @@
 use entity::entities::{article_tag, prelude::ArticleTag, tag};
+#[cfg(feature = "seed")]
+use sea_orm::DeleteResult;
 use sea_orm::{
-    query::*, ColumnTrait, DatabaseConnection, DbErr, DeleteResult, EntityTrait, InsertResult,
-    RelationTrait, TryInsertResult,
+    query::*, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, InsertResult, RelationTrait,
+    TryInsertResult,
 };
 use uuid::Uuid;
 
@@ -25,6 +27,7 @@ pub async fn create_article_tags(
 /// Empty input produce error as not allowed on database level.
 /// See [`InsertResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.InsertResult.html)
 /// documentation for more details.
+#[cfg(any(test, feature = "seed"))]
 pub async fn insert_article_tag(
     db: &DatabaseConnection,
     article_tag: article_tag::ActiveModel,
@@ -55,6 +58,7 @@ pub async fn get_article_tags(
 /// returns an `database error`.
 /// See [`DeleteResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.DeleteResult.html)
 /// documentation for more details.
+#[cfg(feature = "seed")]
 pub async fn empty_article_tag_table(db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     ArticleTag::delete_many().exec(db).await
 }
@@ -314,6 +318,7 @@ mod test_get_article_tags {
 }
 
 #[cfg(test)]
+#[cfg(feature = "seed")]
 mod test_empty_article_tag_table {
     use super::empty_article_tag_table;
     use crate::tests::{

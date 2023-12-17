@@ -5,9 +5,11 @@ use entity::entities::{
     user,
 };
 use migration::SimpleExpr;
+#[cfg(feature = "seed")]
+use sea_orm::DeleteResult;
 use sea_orm::{
-    prelude::Uuid, query::*, ColumnTrait, DatabaseConnection, DbErr, DeleteResult, EntityTrait,
-    FromQueryResult, InsertResult, QueryFilter,
+    prelude::Uuid, query::*, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, FromQueryResult,
+    InsertResult, QueryFilter,
 };
 use serde::Serialize;
 
@@ -119,6 +121,7 @@ pub fn author_followed_by_current_user(user_id: Option<Uuid>) -> SimpleExpr {
 /// returns an `database error`.
 /// See [`DeleteResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.DeleteResult.html)
 /// documentation for more details.
+#[cfg(feature = "seed")]
 pub async fn empty_user_table(db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     User::delete_many().exec(db).await
 }
@@ -589,6 +592,7 @@ mod test_author_followed_by_current_user {
 }
 
 #[cfg(test)]
+#[cfg(feature = "seed")]
 mod test_empty_user_table {
     use super::{empty_user_table, User};
     use crate::tests::{

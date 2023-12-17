@@ -30,6 +30,7 @@ pub async fn delete_follower(
 /// returns an `database error`.
 /// See [`DeleteResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.DeleteResult.html)
 /// documentation for more details.
+#[cfg(feature = "seed")]
 pub async fn empty_follower_table(db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     Follower::delete_many().exec(db).await
 }
@@ -158,6 +159,7 @@ mod test_delete_follower {
 }
 
 #[cfg(test)]
+#[cfg(feature = "seed")]
 mod test_empty_follower_table {
     use super::empty_follower_table;
     use crate::tests::{

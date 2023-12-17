@@ -5,6 +5,7 @@ mod api;
 mod app;
 mod middleware;
 mod repo;
+#[cfg(feature = "seed")]
 mod seed;
 #[allow(dead_code)]
 mod tests;

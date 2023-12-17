@@ -288,6 +288,7 @@ pub async fn delete_article(
 /// returns an `database error`.
 /// See [`DeleteResult`](https://docs.rs/sea-orm/latest/sea_orm/struct.DeleteResult.html)
 /// documentation for more details.
+#[cfg(feature = "seed")]
 pub async fn empty_article_table(db: &DatabaseConnection) -> Result<DeleteResult, DbErr> {
     Article::delete_many().exec(db).await
 }
@@ -1845,6 +1846,7 @@ mod test_delete_article {
 }
 
 #[cfg(test)]
+#[cfg(feature = "seed")]
 mod test_empty_article_table {
     use super::empty_article_table;
     use crate::tests::{
