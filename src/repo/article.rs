@@ -75,8 +75,7 @@ pub async fn get_articles_with_filters(
     Ok(res)
 }
 
-/// Fetch `articles` created by followed users. Optional parameters used for filter records by
-/// tag name, author name, user who liked aticle. Limit response by limit and offset parameters.
+/// Fetch `articles` created by followed users. Limit response by limit and offset parameters.
 /// Ordered by most recent first. Returns vec of `articles` on success, otherwise returns an `database error`.
 pub async fn get_articles_feed(
     db: &DatabaseConnection,
@@ -413,16 +412,16 @@ impl Into<article::Model> for ModelExtended {
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArticleWithAuthor {
-    slug: String,
-    title: String,
-    description: String,
-    body: String,
-    favorited: bool,
-    favorites_count: i32,
-    created_at: Option<DateTime>,
-    updated_at: Option<DateTime>,
-    author: Profile,
-    tag_list: Vec<String>,
+    pub slug: String,
+    pub title: String,
+    pub description: String,
+    pub body: String,
+    pub favorited: bool,
+    pub favorites_count: i32,
+    pub created_at: Option<DateTime>,
+    pub updated_at: Option<DateTime>,
+    pub author: Profile,
+    pub tag_list: Vec<String>,
 }
 
 impl FromQueryResult for ArticleWithAuthor {

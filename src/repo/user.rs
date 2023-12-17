@@ -123,16 +123,18 @@ pub async fn empty_user_table(db: &DatabaseConnection) -> Result<DeleteResult, D
     User::delete_many().exec(db).await
 }
 
+/// Struct describing data about current user
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct UserWithToken {
-    token: String,
-    email: String,
-    username: String,
-    bio: Option<String>,
-    image: Option<String>,
+    pub token: String,
+    pub email: String,
+    pub username: String,
+    pub bio: Option<String>,
+    pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, FromQueryResult, Eq, Serialize)]
+/// Struct describing data about author of article (comment, etc...)
+#[derive(Clone, Debug, Default, PartialEq, FromQueryResult, Eq, Serialize)]
 pub struct Profile {
     pub username: String,
     pub bio: Option<String>,

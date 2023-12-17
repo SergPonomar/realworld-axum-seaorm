@@ -89,11 +89,11 @@ pub async fn empty_comment_table(db: &DatabaseConnection) -> Result<DeleteResult
 #[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentWithAuthor {
-    id: Uuid,
-    body: String,
-    created_at: Option<DateTime>,
-    updated_at: Option<DateTime>,
-    author: Profile,
+    pub id: Uuid,
+    pub body: String,
+    pub created_at: Option<DateTime>,
+    pub updated_at: Option<DateTime>,
+    pub author: Profile,
 }
 
 impl FromQueryResult for CommentWithAuthor {

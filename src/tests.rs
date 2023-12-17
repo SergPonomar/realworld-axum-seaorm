@@ -11,25 +11,10 @@ use uuid::Uuid;
 
 use crate::api::error::ApiErr;
 
+/// Create database connection for test suites.
 pub async fn init_test_db_connection() -> Result<DatabaseConnection, DbErr> {
     Database::connect("sqlite::memory:").await
 }
-
-// pub async fn create_table_for_test_db<E>(
-//     connection: &DatabaseConnection,
-//     entity: E,
-// ) -> Result<ExecResult, DbErr>
-// where
-//     E: EntityTrait,
-// {
-//     let schema = Schema::new(DbBackend::Sqlite);
-//     let stmt: TableCreateStatement = schema.create_table_from_entity(entity);
-
-//     // Create table from entity
-//     connection
-//         .execute(connection.get_database_backend().build(&stmt))
-//         .await
-// }
 
 /// Execute migration for provided connection. Useful for table creation.
 pub async fn execute_migration(
@@ -732,7 +717,7 @@ pub struct TestData {
 }
 
 #[cfg(test)]
-mod test_test_data_builder {
+mod test_data_builder {
     use super::*;
     use crate::tests::Operation::Insert;
     use sea_orm::RuntimeErr;

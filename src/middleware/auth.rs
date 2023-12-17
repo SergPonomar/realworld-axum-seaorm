@@ -1,3 +1,7 @@
+use argon2::{
+    password_hash::{PasswordHasher, SaltString},
+    Argon2, PasswordHash, PasswordVerifier,
+};
 use axum::extract::rejection::TypedHeaderRejection;
 use axum::TypedHeader;
 use axum::{
@@ -5,21 +9,20 @@ use axum::{
     http::{HeaderValue, Method, Request, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
-    Json,
 };
 use bytes::Bytes;
 use chrono::Duration;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use rand_core::OsRng;
 use sea_orm::prelude::Uuid;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::env;
-use thiserror::Error;
+
 const SECRET_KEY: &str = "SECRET_KEY";
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Token {
-    exp: usize,
+    pub exp: usize,
     pub id: Uuid,
 }
 
@@ -57,10 +60,6 @@ impl Credentials for Token {
 
 pub async fn auth<B: std::fmt::Debug>(
     maybe_token: Result<TypedHeader<Authorization<Token>>, TypedHeaderRejection>,
-    // WithRejection(TypedHeader(Authorization(token)), _): WithRejection<
-    //     TypedHeader<Authorization<Token>>,
-    //     ApiError,
-    // >,
     mut request: Request<B>,
     next: Next<B>,
 ) -> Result<Response, StatusCode> {
@@ -78,9 +77,6 @@ pub async fn auth<B: std::fmt::Debug>(
             Ok(response)
         }
     }
-    // // match extract_token
-
-    //     Err(StatusCode::UNAUTHORIZED)
 }
 
 pub async fn optional_auth<B: std::fmt::Debug>(
@@ -96,7 +92,7 @@ pub async fn optional_auth<B: std::fmt::Debug>(
 }
 
 pub fn create_token(id: &Uuid) -> Result<String, jsonwebtoken::errors::Error> {
-    let now = chrono::Utc::now();
+    let now = chrono::Local::now();
     let expires_at = now + Duration::seconds(100);
     let exp = expires_at.timestamp() as usize;
     let claims = Token { exp, id: *id };
@@ -108,37 +104,19 @@ pub fn create_token(id: &Uuid) -> Result<String, jsonwebtoken::errors::Error> {
     encode(&token_header, &claims, &key)
 }
 
-/// Get secret key
+pub fn hash_password(pass: &str) -> Result<String, argon2::password_hash::Error> {
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(pass.as_bytes(), &salt)
+        .map(|hash| hash.to_string())
+}
+
+pub fn check_passwords(tested: &str, real: &str) -> Result<(), argon2::password_hash::Error> {
+    PasswordHash::new(real)
+        .map(|parsed_hash| Argon2::default().verify_password(tested.as_bytes(), &parsed_hash))?
+}
+
+/// Get secret key from .env file
 fn get_secret_key() -> String {
     env::var(SECRET_KEY).expect("env variable SECRET_KEY should be set for JWT generation")
-}
-
-// We derive `thiserror::Error`
-#[derive(Debug, Error)]
-pub enum ApiError {
-    // The `#[from]` attribute generates `From<JsonRejection> for ApiError`
-    // implementation. See `thiserror` docs for more information
-    #[error(transparent)]
-    TypedHeaderExtractorRejection(#[from] TypedHeaderRejection),
-}
-
-impl IntoResponse for ApiError {
-    fn into_response(self) -> axum::response::Response {
-        // let (status, message) = match self {
-        //     ApiError::TypedHeaderExtractorRejection(typed_header_rejection) => (
-        //         typed_header_rejection.status(),
-        //         typed_header_rejection.body_text(),
-        //     ),
-        // };
-
-        let payload = json!({
-            "errors":{
-                "body": [
-                    "can't be empty"
-                ]
-            }
-        });
-
-        (axum::http::StatusCode::BAD_REQUEST, Json(payload)).into_response()
-    }
 }
