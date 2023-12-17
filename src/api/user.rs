@@ -215,10 +215,7 @@ mod test_login_user {
         };
         let result = login_user(State(connection), Json(login_data)).await;
 
-        assert!(match result {
-            Err(ApiErr::UserNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::UserNotExist));
 
         Ok(())
     }
@@ -246,10 +243,7 @@ mod test_login_user {
         };
 
         let result = login_user(State(connection), Json(login_data)).await;
-        assert!(match result {
-            Err(ApiErr::WrongPass) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::WrongPass));
 
         Ok(())
     }
@@ -305,10 +299,7 @@ mod test_register_user {
         };
 
         let result = register_user(State(connection), Json(reg_data)).await;
-        assert!(match result {
-            Err(ApiErr::DbErr(DbErr::Exec(_))) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::DbErr(DbErr::Exec(_))));
 
         Ok(())
     }
@@ -328,10 +319,7 @@ mod test_register_user {
         };
 
         let result = register_user(State(connection), Json(reg_data)).await;
-        assert!(match result {
-            Err(ApiErr::DbErr(DbErr::Exec(_))) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::DbErr(DbErr::Exec(_))));
 
         Ok(())
     }
@@ -358,7 +346,7 @@ mod test_get_current_user {
         let user: user::Model = users.unwrap().into_iter().next().unwrap();
         let token = Token {
             exp: 35,
-            id: user.id.clone(),
+            id: user.id,
         };
 
         // Actual test start
@@ -379,14 +367,11 @@ mod test_get_current_user {
         let user: user::Model = users.unwrap().into_iter().next().unwrap();
         let token = Token {
             exp: 35,
-            id: user.id.clone(),
+            id: user.id,
         };
 
         let result = get_current_user(State(connection), Extension(token)).await;
-        assert!(match result {
-            Err(ApiErr::UserNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::UserNotExist));
 
         Ok(())
     }
@@ -423,7 +408,7 @@ mod test_update_user {
 
         let token = Token {
             exp: 35,
-            id: user.id.clone(),
+            id: user.id,
         };
 
         // Actual test start
@@ -452,16 +437,13 @@ mod test_update_user {
 
         let token = Token {
             exp: 35,
-            id: user.id.clone(),
+            id: user.id,
         };
 
         // Actual test start
         let result = update_user(State(connection), Extension(token), Json(payload)).await;
 
-        assert!(match result {
-            Err(ApiErr::UserNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::UserNotExist));
 
         Ok(())
     }

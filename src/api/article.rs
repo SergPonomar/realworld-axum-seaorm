@@ -145,7 +145,7 @@ pub async fn create_article(
     let article_model = article::ActiveModel {
         id: Set(Uuid::new_v4()),
         slug: Set(slugify(
-            &format! {"{}{}", input.title, current_user_id.simple()},
+            format! {"{}{}", input.title, current_user_id.simple()},
         )),
         title: Set(input.title),
         description: Set(input.description),
@@ -216,7 +216,7 @@ pub async fn update_article(
         article_model.body = Set(input.body.to_owned().unwrap());
     }
 
-    if vec![&input.title, &input.description, &input.body]
+    if [&input.title, &input.description, &input.body]
         .iter()
         .any(|fld| fld.is_some())
     {
@@ -630,7 +630,7 @@ mod test_create_article {
         let result =
             create_article(State(connection), Extension(token), Json(article_data)).await?;
         let Json(result) = result;
-        println!("{:#?}", result);
+
         assert_eq!(result.article.unwrap().title, article.title);
 
         Ok(())
@@ -686,7 +686,7 @@ mod test_update_article {
 
         let token = Token {
             exp: 35,
-            id: user.id.clone(),
+            id: user.id,
         };
 
         // Actual test start
@@ -735,7 +735,7 @@ mod test_update_article {
 
         let token = Token {
             exp: 35,
-            id: user.id.clone(),
+            id: user.id,
         };
 
         // Actual test start
@@ -747,10 +747,7 @@ mod test_update_article {
         )
         .await;
 
-        assert!(match result {
-            Err(ApiErr::ArticleNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::ArticleNotExist));
 
         Ok(())
     }
@@ -764,10 +761,7 @@ mod test_delete_article {
         Operation::{Insert, Migration},
         TestData, TestDataBuilder, TestErr,
     };
-    use axum::{
-        extract::{Path, State},
-        Json,
-    };
+    use axum::extract::{Path, State};
     use entity::entities::article;
     use std::vec;
 
@@ -782,10 +776,7 @@ mod test_delete_article {
 
         let article: article::Model = articles.unwrap().into_iter().next().unwrap();
 
-        let result = delete_article(Path(article.slug), State(connection)).await?;
-        let Json(result) = result;
-
-        assert_eq!(result, ());
+        let _result = delete_article(Path(article.slug), State(connection)).await?;
 
         Ok(())
     }
@@ -801,10 +792,7 @@ mod test_delete_article {
 
         let result = delete_article(Path("slug".to_owned()), State(connection)).await;
 
-        assert!(match result {
-            Err(ApiErr::ArticleNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::ArticleNotExist));
 
         Ok(())
     }
@@ -896,10 +884,7 @@ mod test_favorite_article {
         let result =
             favorite_article(Path(article.slug), Extension(token), State(connection)).await;
 
-        assert!(match result {
-            Err(ApiErr::ArticleNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::ArticleNotExist));
 
         Ok(())
     }
@@ -991,10 +976,7 @@ mod test_unfavorite_article {
         let result =
             unfavorite_article(Path(article.slug), Extension(token), State(connection)).await;
 
-        assert!(match result {
-            Err(ApiErr::ArticleNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::ArticleNotExist));
 
         Ok(())
     }

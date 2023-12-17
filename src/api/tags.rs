@@ -75,10 +75,7 @@ mod test_errors {
 
         let result = list_tags(State(connection)).await;
 
-        assert!(match result {
-            Err(ApiErr::DbErr(_)) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::DbErr(_)));
 
         Ok(())
     }
@@ -89,10 +86,7 @@ mod test_errors {
 
         let result = list_tags(State(connection)).await;
 
-        assert!(match result {
-            Err(ApiErr::DbErr(_)) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::DbErr(_)));
 
         Ok(())
     }

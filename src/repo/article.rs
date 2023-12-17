@@ -394,17 +394,17 @@ impl FromQueryResult for ModelExtended {
     }
 }
 
-impl Into<article::Model> for ModelExtended {
-    fn into(self) -> article::Model {
+impl From<ModelExtended> for article::Model {
+    fn from(mdl: ModelExtended) -> article::Model {
         article::Model {
-            id: self.id,
-            slug: self.slug,
-            title: self.title,
-            description: self.description,
-            body: self.body,
-            author_id: self.author_id,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
+            id: mdl.id,
+            slug: mdl.slug,
+            title: mdl.title,
+            description: mdl.description,
+            body: mdl.body,
+            author_id: mdl.author_id,
+            created_at: mdl.created_at,
+            updated_at: mdl.updated_at,
         }
     }
 }
@@ -550,7 +550,7 @@ mod test_get_articles_with_filters {
             .build()
             .await?;
 
-        let author = users.unwrap().into_iter().nth(0).unwrap();
+        let author = users.unwrap().into_iter().next().unwrap();
         let article = articles.unwrap().into_iter().nth(2).unwrap();
         let expected: Vec<ArticleWithAuthor> = [article]
             .into_iter()
@@ -772,7 +772,7 @@ mod test_get_articles_with_filters {
             .build()
             .await?;
 
-        let author = users.unwrap().into_iter().nth(0).unwrap();
+        let author = users.unwrap().into_iter().next().unwrap();
         let article = articles.unwrap().into_iter().nth(2).unwrap();
         let expected: Vec<ArticleWithAuthor> = [article]
             .into_iter()
@@ -1055,8 +1055,8 @@ mod test_get_articles_with_filters {
         .await?;
         result.reverse();
 
-        assert_eq!(result[0].author.following, true);
-        assert_eq!(result[1].author.following, false);
+        assert!(result[0].author.following);
+        assert!(!result[1].author.following);
 
         Ok(())
     }
@@ -1087,8 +1087,8 @@ mod test_get_articles_with_filters {
         .await?;
         result.reverse();
 
-        assert_eq!(result[0].favorited, false);
-        assert_eq!(result[1].favorited, true);
+        assert!(!result[0].favorited);
+        assert!(result[1].favorited);
 
         Ok(())
     }

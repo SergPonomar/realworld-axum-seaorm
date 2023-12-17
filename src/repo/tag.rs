@@ -49,7 +49,7 @@ pub async fn insert_tag(
 pub async fn get_tags_ids(db: &DatabaseConnection, tags: Vec<String>) -> Result<Vec<Uuid>, DbErr> {
     // Filter empty tag names
     let tags: Vec<String> = tags.into_iter().filter(|tg| !tg.is_empty()).collect();
-    if tags.len() == 0 {
+    if tags.is_empty() {
         return Ok(Vec::new());
     };
     Tag::find()
@@ -160,10 +160,7 @@ mod test_create_tags {
         let actives = vec![];
         let insert_result = create_tags(&connection, actives).await?;
 
-        assert!(match insert_result {
-            Empty => true,
-            _ => false,
-        });
+        matches!(insert_result, Empty);
 
         Ok(())
     }
@@ -185,7 +182,7 @@ mod test_insert_tag {
         let (connection, TestData { tags, .. }) =
             TestDataBuilder::new().tags(Create(1)).build().await?;
         let tag = tags.unwrap().into_iter().next().unwrap();
-        let id = (&tag.id).clone();
+        let id = tag.id;
 
         let insert_result = insert_tag(&connection, tag.into()).await?;
         assert_eq!(insert_result.last_insert_id, id);

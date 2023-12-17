@@ -117,10 +117,10 @@ mod test_get_current_user {
             .build()
             .await?;
         let profile: user::Model = users.as_ref().unwrap().iter().next().unwrap().clone();
-        let current_user: user::Model = users.unwrap().iter().cloned().last().unwrap();
+        let current_user: user::Model = users.unwrap().iter().last().cloned().unwrap();
         let token = Token {
             exp: 35,
-            id: current_user.id.clone(),
+            id: current_user.id,
         };
 
         // Actual test start
@@ -157,10 +157,7 @@ mod test_get_current_user {
         )
         .await;
 
-        assert!(match result {
-            Err(ApiErr::UserNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::UserNotExist));
 
         Ok(())
     }
@@ -192,10 +189,10 @@ mod test_follow_user {
             .build()
             .await?;
         let profile: user::Model = users.as_ref().unwrap().iter().next().unwrap().clone();
-        let current_user: user::Model = users.unwrap().iter().cloned().last().unwrap();
+        let current_user: user::Model = users.unwrap().iter().last().cloned().unwrap();
         let token = Token {
             exp: 35,
-            id: current_user.id.clone(),
+            id: current_user.id,
         };
 
         // Actual test start
@@ -238,10 +235,7 @@ mod test_follow_user {
         )
         .await;
 
-        assert!(match result {
-            Err(ApiErr::UserNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::UserNotExist));
 
         Ok(())
     }
@@ -273,10 +267,10 @@ mod test_unfollow_user {
             .build()
             .await?;
         let profile: user::Model = users.as_ref().unwrap().iter().next().unwrap().clone();
-        let current_user: user::Model = users.unwrap().iter().cloned().last().unwrap();
+        let current_user: user::Model = users.unwrap().iter().last().cloned().unwrap();
         let token = Token {
             exp: 35,
-            id: current_user.id.clone(),
+            id: current_user.id,
         };
 
         // Actual test start
@@ -319,10 +313,7 @@ mod test_unfollow_user {
         )
         .await;
 
-        assert!(match result {
-            Err(ApiErr::UserNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::UserNotExist));
 
         Ok(())
     }

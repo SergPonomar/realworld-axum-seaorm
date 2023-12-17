@@ -280,7 +280,7 @@ mod test_get_user_with_token_by_id {
         let (connection, TestData { users, .. }) =
             TestDataBuilder::new().users(Insert(5)).build().await?;
         let expected_model = users.unwrap().into_iter().nth(2).unwrap();
-        let expected_id = expected_model.id.clone();
+        let expected_id = expected_model.id;
         let expected = UserWithToken {
             token: create_token(&expected_id).unwrap(),
             ..expected_model.into()

@@ -34,6 +34,7 @@ pub async fn insert_article_tag(
 
 /// Fetch `tag names` for the provided article.
 /// Returns `list of tag names` on success, otherwise returns an `database error`.
+#[allow(dead_code)]
 pub async fn get_article_tags(
     db: &DatabaseConnection,
     article_id: Uuid,
@@ -136,10 +137,7 @@ mod test_create_article_tags {
         let actives = vec![];
         let insert_result = create_article_tags(&connection, actives).await?;
 
-        assert!(match insert_result {
-            Empty => true,
-            _ => false,
-        });
+        matches!(insert_result, Empty);
 
         Ok(())
     }

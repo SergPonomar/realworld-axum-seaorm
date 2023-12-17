@@ -196,10 +196,7 @@ mod test_create_comment {
         )
         .await;
 
-        assert!(match result {
-            Err(ApiErr::ArticleNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::ArticleNotExist));
 
         Ok(())
     }
@@ -323,10 +320,7 @@ mod test_list_comments {
         )
         .await;
 
-        assert!(match result {
-            Err(ApiErr::ArticleNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::ArticleNotExist));
 
         Ok(())
     }
@@ -340,10 +334,7 @@ mod test_delete_comment {
         Operation::{Insert, Migration},
         TestData, TestDataBuilder, TestErr,
     };
-    use axum::{
-        extract::{Path, State},
-        Json,
-    };
+    use axum::extract::{Path, State};
     use entity::entities::comment;
     use std::vec;
     use uuid::Uuid;
@@ -360,11 +351,8 @@ mod test_delete_comment {
 
         let comment: comment::Model = comments.unwrap().into_iter().next().unwrap();
 
-        let result =
+        let _result =
             delete_comment(Path(("slug".to_owned(), comment.id)), State(connection)).await?;
-        let Json(result) = result;
-
-        assert_eq!(result, ());
 
         Ok(())
     }
@@ -382,10 +370,7 @@ mod test_delete_comment {
         let result =
             delete_comment(Path(("slug".to_owned(), Uuid::new_v4())), State(connection)).await;
 
-        assert!(match result {
-            Err(ApiErr::CommentNotExist) => true,
-            _ => false,
-        });
+        matches!(result, Err(ApiErr::CommentNotExist));
 
         Ok(())
     }

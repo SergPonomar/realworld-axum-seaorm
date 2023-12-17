@@ -115,26 +115,26 @@ impl Error for BldrErr {
 /// error returned by Test
 #[derive(Debug, PartialEq)]
 pub enum TestErr {
-    BldrErr(BldrErr),
-    ApiErr(ApiErr),
-    DbErr(DbErr),
+    Bldr(BldrErr),
+    Api(ApiErr),
+    Db(DbErr),
 }
 
 impl From<BldrErr> for TestErr {
     fn from(err: BldrErr) -> TestErr {
-        TestErr::BldrErr(err)
+        TestErr::Bldr(err)
     }
 }
 
 impl From<ApiErr> for TestErr {
     fn from(err: ApiErr) -> TestErr {
-        TestErr::ApiErr(err)
+        TestErr::Api(err)
     }
 }
 
 impl From<DbErr> for TestErr {
     fn from(err: DbErr) -> TestErr {
-        TestErr::DbErr(err)
+        TestErr::Db(err)
     }
 }
 
@@ -217,7 +217,7 @@ impl TestDataBuilder {
                             title: format!("title{}", idx + 1),
                             description: "description".to_owned(),
                             body: "body".to_owned(),
-                            author_id: users[*val as usize - 1].id,
+                            author_id: users[*val - 1].id,
                             created_at: Some(current_time),
                             updated_at: Some(current_time),
                         },
@@ -312,8 +312,8 @@ impl TestDataBuilder {
                         | (Operation::Create(usrs), Operation::Insert(artcls)) => comment::Model {
                             id: Uuid::new_v4(),
                             body: format!("comment{}", idx + 1),
-                            author_id: usrs[*author as usize - 1].id,
-                            article_id: artcls[*article as usize - 1].id,
+                            author_id: usrs[*author - 1].id,
+                            article_id: artcls[*article - 1].id,
                             created_at: Some(current_time),
                             updated_at: Some(current_time),
                         },
@@ -427,8 +427,8 @@ impl TestDataBuilder {
                         | (Operation::Create(artcls), Operation::Create(tgs))
                         | (Operation::Create(artcls), Operation::Insert(tgs)) => {
                             article_tag::Model {
-                                article_id: artcls[*article as usize - 1].id,
-                                tag_id: tgs[*tag as usize - 1].id,
+                                article_id: artcls[*article - 1].id,
+                                tag_id: tgs[*tag - 1].id,
                             }
                         }
                         _ => unreachable!(),
@@ -482,8 +482,8 @@ impl TestDataBuilder {
                 .iter()
                 .map(|(user, follower)| match self.users.as_ref().unwrap() {
                     Operation::Insert(users) | Operation::Create(users) => follower::Model {
-                        user_id: users[*user as usize - 1].id,
-                        follower_id: users[*follower as usize - 1].id,
+                        user_id: users[*user - 1].id,
+                        follower_id: users[*follower - 1].id,
                     },
                     _ => unreachable!(),
                 })
@@ -567,8 +567,8 @@ impl TestDataBuilder {
                         | (Operation::Create(artcls), Operation::Create(usrs))
                         | (Operation::Create(artcls), Operation::Insert(usrs)) => {
                             favorited_article::Model {
-                                article_id: artcls[*article as usize - 1].id,
-                                user_id: usrs[*user as usize - 1].id,
+                                article_id: artcls[*article - 1].id,
+                                user_id: usrs[*user - 1].id,
                             }
                         }
                         _ => unreachable!(),
